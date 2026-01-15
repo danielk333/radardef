@@ -1,0 +1,104 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "radardef"
+version = "0.1.0"
+description = "Radar station specifications and data utilities"
+readme = { file = "README.md", content-type = "text/markdown" }
+authors = [
+  { name = "Daniel Kastinen", email = "daniel.kastinen@irf.se" },
+  { name = "Hampus Andersson", email = "hampus.andersson@irf.se" },
+]
+maintainers = [
+  { name = "Daniel Kastinen", email = "daniel.kastinen@irf.se" },
+  { name = "Hampus Andersson", email = "hampus.andersson@irf.se" },
+]
+license = { file = "LICENSE" }
+classifiers = [
+  "Intended Audience :: Science/Research",
+  "Programming Language :: Python :: 3",
+  "Topic :: Scientific/Engineering :: Physics",
+  "Operating System :: OS Independent",
+  "License :: OSI Approved :: MIT License",
+]
+requires-python = ">=3.11"
+dependencies = [
+  "pyant >= 1.1.0",
+  "spacecoords >= 0.1.2",
+  "numpy >= 1.19.5",
+  "scipy >= 1.4.1",
+  "h5py >= 3.4.0",
+  "digital_rf >= 2.6.6",
+  "tqdm >= 4.66.1",
+  "requests >= 2.28.2",
+  "lxml",
+]
+
+[project.urls]
+Documentation = "https://danielk.developer.irf.se/radardef/"
+Repository = "https://github.com/danielk333/radardef"
+
+[project.scripts]
+radardef = "radardef.cli:main"
+
+[project.optional-dependencies]
+develop = [
+  "pytest",
+  "flake8",
+  "wheel",
+  "build",
+  "twine",
+  "auditwheel",
+  "pytest-cov",
+  "black",
+  "isort",
+]
+type_checker = ["mypy >= 1.18.2", "xenon"]
+profiling = ["yappi >= 1.4.0"]
+tests = ["pytest", "pytest-cov"]
+documentation = [
+  "docstr-coverage",
+  "mkdocs-material",
+  "mkdocstrings[python]",
+  "mkdocs-jupyter",
+  "mkdocs-gen-files",
+  "mkdocs-literate-nav",
+  "mkdocs-section-index",
+  "matplotlib",
+]
+mpi = ["mpi4py"]
+skymaps = ["pygdsm", "astropy-healpix"]
+
+[tool.setuptools]
+include-package-data = true
+license-files = ["LICENSE"]
+
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.black]
+line-length = 110
+
+[tool.pytest.ini_options]
+addopts = "-v --cov=radardef"
+testpaths = ["tests"]
+
+[tool.coverage.report]
+exclude_also = [
+  # Don't complain if tests don't hit defensive assertion code:
+  "raise AssertionError",
+  "raise NotImplementedError",
+
+  # Don't complain if non-runnable code isn't run:
+  "if 0:",
+  "if __name__ == .__main__.:",
+
+  # Don't complain about abstract methods, they aren't run:
+  "@(abc\\.)?abstractmethod",
+]
+
+[tool.uv.sources]
+pygdsm = { git = "https://github.com/telegraphic/pygdsm" }
