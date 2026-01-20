@@ -1,8 +1,11 @@
 import pathlib
-
+import os
 import mkdocs_gen_files
 
-root = pathlib.Path(__file__).parent.parent.parent
+try:
+    root = pathlib.Path(__file__).parent.parent.parent
+except NameError:
+    root = pathlib.Path(os.path.abspath(""))
 src = root / "src"
 package = src / "radardef"
 output_dir = root / "docs" / "reference"

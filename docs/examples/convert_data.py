@@ -58,6 +58,22 @@ conv_collection = radardef.ConverterCollection(stations)
 converted_files = conv_collection.convert(raw_data, source_format, TargetFormat.H5, converted_data_path.name)
 utils.print_dir_items(converted_files)
 
+# ## Option 4 - Unknown source and Target formats
+# ---
+# In this case we do not know what available target formats there is and we do not know the source files
+# source format either.
+# To solve this we use the tools of RadarDef *(or rather the ConverterCollection that the RadarDef
+# utilizes)* to find out the source format and from that figure out what target formats are available
+# for this format.
+
+source_format = radar_def.get_source_format(raw_data)
+target_formats = radar_def.available_target_formats(source_format)
+print(
+    f"The current converters can convert the source format: {source_format} to the target format/formats: {[f.name for f in target_formats]} "
+)
+converted_files = radar_def.convert(raw_data, target_formats[0], converted_data_path.name)
+utils.print_dir_items(converted_files[0])
+
 # Clear files
 raw_data_dir.cleanup()
 converted_data_path.cleanup()

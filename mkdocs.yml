@@ -60,8 +60,11 @@ plugins:
             summary: true
   - mkdocs-jupyter:
       execute: true
-      include_source: true
+      execute_ignore:
+        - "examples/analysis/utils.py"
+      include_source: false
       ignore: ["_wip*"]
+      allow_errors: false
 
 markdown_extensions:
   - admonition

@@ -86,5 +86,15 @@ class ConverterCollection:
                 st += f"├Target format> {target_format}\n"
         return st
 
+    def available_target_formats(self, source_format: SourceFormat) -> list[TargetFormat]:
+        """
+        Get all target formats that is supported by the available converters for a specific source format
+        """
+
+        try:
+            return list(self.__converters[source_format].keys())
+        except KeyError:
+            return []
+
     def get_converter(self, source_format: SourceFormat, target_format: TargetFormat) -> Converter:
         return self.__converters[source_format][target_format]

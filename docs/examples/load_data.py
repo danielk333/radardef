@@ -12,7 +12,7 @@ from pathlib import Path
 sys.path.insert(1, str(Path(os.path.abspath("")) / "docs" / "examples"))
 
 import radardef
-from radardef.types import EiscatUHFLocation, TargetFormat
+from radardef.types import EiscatUHFLocation, TargetFormat, Metadata
 from pathlib import Path
 import tempfile
 import radardef
@@ -20,6 +20,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import utils
 import numpy.typing as npt
+
 
 # ## Prerequisites - download and convert data
 # ---
@@ -82,7 +83,7 @@ for chnl in data_loader.channels:
 # Extract receiver samples from each pulse,
 
 
-def rx_samples_per_pulse(data: npt.NDArray, meta: radardef.types.Metadata):
+def rx_samples_per_pulse(data: npt.NDArray, meta: Metadata):
     """Extract rx samples from each pulse"""
     pulses = int(len(summed_data) / meta.experiment.ipp_samps)
     samples_per_pulse = summed_data.reshape(pulses, meta.experiment.ipp_samps)
