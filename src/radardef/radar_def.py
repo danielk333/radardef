@@ -98,6 +98,12 @@ class RadarDef:
         """Determines if the path is the given source format"""
         return self.__format_collection.is_format(path, self._validate_source_format(source_format))
 
+    def available_target_formats(self, source_format: SourceFormat) -> list[TargetFormat]:
+        """
+        Get all target formats that is supported by the available converters for a specific source format
+        """
+        return self.converter_collection.available_target_formats(source_format)
+
     def convert(
         self,
         raw_paths: list[str] | list[Path] | str | Path,

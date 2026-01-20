@@ -1,6 +1,10 @@
 import pathlib
+import os
 
-root = pathlib.Path(__file__).parent.parent
+try:
+    root = pathlib.Path(__file__).parent.parent.parent
+except NameError:
+    root = pathlib.Path(os.path.abspath(""))
 docs = root / "docs"
 examples = docs / "examples"
 notebooks = docs / "notebooks"
