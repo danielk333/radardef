@@ -36,14 +36,14 @@ converted_files = radar_def.convert(raw_data, TargetFormat.H5, converted_data_pa
 # Here we use the RadarDef object to load the data, the file type and compatible dataloader is
 # automatically recognized.
 
-data_loader = radar_def.load_data(converted_files[0][0])
+data_loader = radar_def.load_data(converted_files[0])
 assert data_loader is not None, "No data loader compatible with the file"
 
 # ## Option 2 - Specific radar station
 # ---
 # When working with data from a specific station the station object can be used instead.
 
-data_loader = radardef.Mu().load_data(converted_files[0][0])
+data_loader = radardef.Mu().load_data(converted_files[0])
 assert data_loader is not None, "MU h5 data loader is not compatible with the filetype"
 
 # ## Option 3 - using a collection of several stations dataloaders
@@ -51,7 +51,7 @@ assert data_loader is not None, "MU h5 data loader is not compatible with the fi
 # If data from some specific stations should be analysed a collection can be used.
 
 dl_collection = radardef.DataLoaderCollection([radardef.Mu(), radardef.EiscatUHF(EiscatUHFLocation.KIRUNA)])
-data_loader = dl_collection.load_data(converted_files[0][0])
+data_loader = dl_collection.load_data(converted_files[0])
 assert data_loader is not None, "No data loader compatible with the file"
 
 # ## Available data
@@ -74,7 +74,7 @@ print(f"Pointing data: {data_loader.pointing}")
 # The RX samples can be visualised as below. To get a better resolution we sum all
 # channels. The data source is the MU radar, thus we use the Mu station object:
 
-data_loader = radardef.Mu().load_data(converted_files[0][0])
+data_loader = radardef.Mu().load_data(converted_files[0])
 print(f"Available channels: {data_loader.channels}")
 summed_data = np.zeros((data_loader.bounds(channel=data_loader.channels[0])[1],), dtype=np.complex128)
 for chnl in data_loader.channels:

@@ -11,7 +11,7 @@ from radardef.radar_stations.eiscat.beams.uhf import (
 from radardef.types import BeamType, EiscatUHFLocation, StationID
 
 from .converters import EiscatMatbzToDrf
-from .data_loaders import DrfLoader
+from .data_loaders import DrfLoader, HDF5Loader
 from .validators import EiscatMatlab
 
 
@@ -56,7 +56,7 @@ class EiscatUHF(RadarStation):
                     frequency=930.0e6,
                     converters=[EiscatMatbzToDrf()],
                     validator=EiscatMatlab(),
-                    data_loaders=[DrfLoader()],
+                    data_loaders=[DrfLoader(), HDF5Loader()],
                 )
             case EiscatUHFLocation.SODANKYLA:
                 super().__init__(
@@ -73,7 +73,7 @@ class EiscatUHF(RadarStation):
                     frequency=930.0e6,
                     converters=[EiscatMatbzToDrf()],
                     validator=EiscatMatlab(),
-                    data_loaders=[DrfLoader()],
+                    data_loaders=[DrfLoader(), HDF5Loader()],
                 )
             case EiscatUHFLocation.TROMSO:
                 super().__init__(
@@ -91,5 +91,5 @@ class EiscatUHF(RadarStation):
                     frequency=930.0e6,
                     converters=[EiscatMatbzToDrf()],
                     validator=EiscatMatlab(),
-                    data_loaders=[DrfLoader()],
+                    data_loaders=[DrfLoader(), HDF5Loader()],
                 )

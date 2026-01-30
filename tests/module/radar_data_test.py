@@ -43,14 +43,13 @@ class RadarDataTest(unittest.TestCase):
         output_dir = self.loc_tmp
         out = radar_def.convert(src_file, "h5", output_dir)
 
-        for list_dir in out:
-            for dir in list_dir:
-                self.assertEqual(dir.parents[2], Path(output_dir))
-                assert dir.is_dir()
+        for dir in out:
+            self.assertEqual(dir.parents[2], Path(output_dir))
+            assert dir.is_dir()
 
-                amount_of_files = len([x for x in dir.iterdir() if x.is_file()])
+            amount_of_files = len([x for x in dir.iterdir() if x.is_file()])
 
-                self.assertGreater(amount_of_files, 1)
+            self.assertGreater(amount_of_files, 1)
 
     def test_eiscat_drf_convert(self):
 
@@ -59,10 +58,9 @@ class RadarDataTest(unittest.TestCase):
         output_dir = self.loc_tmp
         out = radar_def.convert(src_file, "drf", output_dir)
 
-        for list_dir in out:
-            for dir in list_dir:
-                self.assertEqual(dir.parents[0], Path(output_dir))
-                assert dir.is_dir()
+        for dir in out:
+            self.assertEqual(dir.parents[0], Path(output_dir))
+            assert dir.is_dir()
 
     def test_mu_h5_convert_multiple_files(self):
 
@@ -71,17 +69,16 @@ class RadarDataTest(unittest.TestCase):
         output_dir = self.loc_tmp
         out = radar_def.convert(src_files, "h5", output_dir)
 
-        self.assertEqual(out[0][0].parents[2], Path(output_dir))
-        self.assertEqual(out[1][0].parents[2], Path(output_dir))
+        self.assertEqual(out[0].parents[2], Path(output_dir))
+        self.assertEqual(out[1].parents[2], Path(output_dir))
 
-        for list_dir in out:
-            for dir in list_dir:
-                self.assertEqual(dir.parents[2], Path(output_dir))
-                assert dir.is_dir()
+        for dir in out:
+            self.assertEqual(dir.parents[2], Path(output_dir))
+            assert dir.is_dir()
 
-                amount_of_files = len([x for x in dir.iterdir() if x.is_file()])
+            amount_of_files = len([x for x in dir.iterdir() if x.is_file()])
 
-                self.assertGreater(amount_of_files, 1)
+            self.assertGreater(amount_of_files, 1)
 
     # TODO: A test that checks that it is possible to read data from one file to the next
 
@@ -92,7 +89,7 @@ class RadarDataTest(unittest.TestCase):
         output_dir = self.loc_tmp
         out = radar_def.convert(src_file, "h5", output_dir)
 
-        loader = radar_def.load_data(out[0][0])
+        loader = radar_def.load_data(out[0])
 
         assert loader is not None
 
@@ -134,7 +131,7 @@ class RadarDataTest(unittest.TestCase):
         output_dir = self.loc_tmp
         out = radar_def.convert(src_file, "h5", output_dir)
 
-        files = [f for f in out[0][0].iterdir() if f.is_file()]
+        files = [f for f in out[0].iterdir() if f.is_file()]
 
         for f in files:
             loader = radar_def.load_data(f, "h5")
@@ -177,7 +174,7 @@ class RadarDataTest(unittest.TestCase):
         output_dir = self.loc_tmp
         out = radar_def.convert(src_file, "drf", output_dir)
 
-        loader = radar_def.load_data(out[0][0], "drf")
+        loader = radar_def.load_data(out[0], "drf")
 
         metadata = loader.meta
 
@@ -197,8 +194,8 @@ class RadarDataTest(unittest.TestCase):
         self.assertEqual(metadata.experiment.t_cal_on_usec, 19900.0)
         self.assertEqual(metadata.experiment.t_cal_off_usec, 19997.0)
 
-        self.assertEqual(metadata.bounds.ts_start_usec, 1637668800.001245)
-        self.assertEqual(metadata.bounds.ts_end_usec, 1637669017.601226)
+        self.assertEqual(metadata.bounds.ts_start_usec, 1637668800001245.0)
+        self.assertEqual(metadata.bounds.ts_end_usec, 1637669017601226.0)
 
         start, end = loader.bounds("32m")
         self.assertIsNotNone(loader.read(channel="32m", start_sample=start, vector_length=10000))

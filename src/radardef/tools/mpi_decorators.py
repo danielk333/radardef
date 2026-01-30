@@ -116,7 +116,7 @@ def MPI_target_args(
                     raise ValueError("The arguments length are not of the same size")
 
             func_calls = [None] * number_of_indexes
-            func_rets = [None] * number_of_indexes
+            func_rets: list[Any] = [None] * number_of_indexes
             tmp_args = list(args)
             for i in range(number_of_indexes):
                 for arg in arg_indexes:
@@ -150,7 +150,14 @@ def MPI_target_args(
             elif not MPI:
                 for ind in iter_inds:
                     func_rets[ind] = func_calls[ind]
-            return func_rets
+
+            # A list of lists
+            ret = []
+            for ind in func_rets:
+                if isinstance(ind, list):
+                    ret += [i for i in ind]
+
+            return ret
 
         return _mpi_wrapped_func
 
