@@ -74,8 +74,8 @@ class ConverterCollectionTest(unittest.TestCase):
             Path(""),
         )
 
-        self.assertEqual(output[0][0], Path("/converted_file/1"))
-        self.assertEqual(output[1][0], Path("/converted_file/2"))
+        self.assertEqual(output[0], Path("/converted_file/1"))
+        self.assertEqual(output[1], Path("/converted_file/2"))
 
     def test_get_converter(self):
 

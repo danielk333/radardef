@@ -19,7 +19,7 @@ The experiment section is defined by [ExpParams](../reference/radardef/types/typ
 - **t_tx_end_usec**: Tx signal end in the inter pulse period, in microseconds.
 - **wavelength**: The signal wavelength.
 - **tx_channel** (*optional*): As not all radars are transmitting this is optional.
-- **tx_pulse_length** (*optional*): Amount of samples in tx signal.
+- **tx_pulse_length** (*optional*): Length of tx pulse in microseconds.
 - **t_cal_on_usec** (*optional*): Calibration on time in microseconds.
 - **t_cal_off_usec** (*optional*): Calibration off time in microseconds.
 - **data** (*optional*): To be removed

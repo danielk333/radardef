@@ -31,7 +31,7 @@ raw_data = utils.download_test_data(Path(raw_data_dir.name))
 
 radar_def = radardef.RadarDef()
 converted_files = radar_def.convert(raw_data, TargetFormat.H5, converted_data_path.name)
-utils.print_dir_items(converted_files[0])  # TODO: Fix this 0
+utils.print_dir_items(converted_files)
 
 # ## Option 2 - using a specific radar station
 # ---
@@ -72,7 +72,7 @@ print(
     f"The current converters can convert the source format: {source_format} to the target format/formats: {[f.name for f in target_formats]} "
 )
 converted_files = radar_def.convert(raw_data, target_formats[0], converted_data_path.name)
-utils.print_dir_items(converted_files[0])
+utils.print_dir_items(converted_files)
 
 # Clear files
 raw_data_dir.cleanup()

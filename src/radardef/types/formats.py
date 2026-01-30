@@ -16,6 +16,7 @@ class TargetFormat(StrEnum):
 
     H5 = "h5"
     DRF = "drf"
+    HDF5 = "hdf5"
     UNKNOWN = "unknown"
 
 

@@ -13,8 +13,11 @@ def ts_from_str(datetime_str: str, as_local: bool = False) -> float:
             in which case the string is interpreted as local time.
 
     Returns:
-        Timestamp
+        Timestamp in seconds since epoch
     """
+    if datetime_str[-1] == "Z":
+        datetime_str = datetime_str[:-1]
+
     # Parse the string into a naive datetime object
     _datetime = dt.datetime.strptime(datetime_str, "%Y-%m-%dT%H:%M:%S.%f")
 

@@ -218,8 +218,8 @@ def convert_eiscat_to_drf(
     meta.add_section(Metaparam.BOUNDS)
     bounds = meta[Metaparam.BOUNDS]
     meta_last = eiscat_load_file(files[-1])[0]
-    bounds[Boundparam.TS_START_USEC] = str(meta_first["ts"]["file_start"])
-    bounds[Boundparam.TS_END_USEC] = str(meta_last["ts"]["file_end"])
+    bounds[Boundparam.TS_START_USEC] = str(meta_first["ts"]["file_start"] * 1e6)
+    bounds[Boundparam.TS_END_USEC] = str(meta_last["ts"]["file_end"] * 1e6)
 
     # write metadata file
     metafile = hdrf / "metadata.ini"

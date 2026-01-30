@@ -264,8 +264,8 @@ class H5Loader(DataLoader):
         # time can be validated by end_time = start_time.timestamp() + (n_ipp * t_ipp_usec) * 1e-6, n_ipp = 512
         # if this is not matching maybe the measurement stopped  early
         bounds = BoundParams(
-            ts_start_usec=start_time.timestamp(),
-            ts_end_usec=end_time.timestamp(),
+            ts_start_usec=int(start_time.timestamp() * 1e6),
+            ts_end_usec=int(end_time.timestamp() * 1e6),
         )
 
         sample_bounds: dict[str | int, tuple[int, int]] = {}
