@@ -30,11 +30,6 @@ class H5Loader(DataLoader):
         return self.__meta
 
     @property
-    def pointing(self) -> Pointing:
-        """Pointing data, data describing the radar pointing direction in spherical coordinates"""
-        return Pointing(data=[(0, {"azimuth": 0.0, "elevation": 90.0})], sample_rate=1)
-
-    @property
     def channels(self) -> list[int] | list[str]:
         """All available channels"""
         return self.meta.experiment.rx_channels
@@ -187,6 +182,10 @@ class H5Loader(DataLoader):
                 return padded_data[0:vector_length]
             else:
                 return padded_data[start_sample:]
+
+    def pointing(self, sample: int) -> Pointing:
+        """Pointing data, data describing the radar pointing direction in spherical coordinates"""
+        return Pointing(azimuth=0.0, elevation=90.0)
 
     def _flatten_and_zero_pad(self, data: npt.NDArray[np.complex128]) -> npt.NDArray[np.complex128]:
         """

@@ -32,13 +32,6 @@ class DataLoader:
         """Metadata, containing experiment data and bounds data"""
         pass
 
-    # TODO: change to carthesian coordinates
-    @property
-    @abstractmethod
-    def pointing(self) -> Pointing:
-        """Pointing data, data describing the radar pointing direction in spherical coordinates"""
-        pass
-
     @property
     @abstractmethod
     def channels(self) -> list[int] | list[str]:
@@ -80,5 +73,14 @@ class DataLoader:
 
         Returns:
             Complex data of given channel
+        """
+        pass
+
+    # TODO: change to carthesian coordinates
+    @abstractmethod
+    def pointing(self, sample: int) -> Pointing:
+        """
+        Pointing data, data describing the radar pointing direction in spherical coordinates
+
         """
         pass

@@ -56,5 +56,5 @@ class Pointing(NamedTuple):
     Pointing
     """
 
-    data: list[tuple[int, dict[str, float]]]
-    sample_rate: float
+    azimuth: float
+    elevation: float

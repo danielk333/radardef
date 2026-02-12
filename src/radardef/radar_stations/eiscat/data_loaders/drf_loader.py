@@ -72,19 +72,6 @@ class DrfLoader(DataLoader):
         return Metadata(experiment, bounds)
 
     @property
-    def pointing(self) -> Pointing:
-        """Pointing data, data describing the radar pointing direction in spherical coordinates"""
-        if self.__meta_reader is None:
-            return Pointing(data=[(0, {"azimuth": 0, "elevation": 0})], sample_rate=0)
-        else:
-            idx_start, idx_end = self.__meta_reader.get_bounds()
-            # load pointing data as vector
-            return Pointing(
-                data=list(self.__meta_reader.read(idx_start, idx_end).items()),
-                sample_rate=float(self.__meta_reader.get_samples_per_second()),
-            )
-
-    @property
     def channels(self) -> list[int] | list[str]:
         """All available channels"""
         return self.__channel_reader.get_channels()
@@ -115,6 +102,8 @@ class DrfLoader(DataLoader):
             raise Exception(f"<dir/pointing> must be directory path, {self.__path}")
 
         self.__meta_reader = digital_rf.DigitalMetadataReader(str(pointing_dir))
+        idx_start, idx_end = self.__meta_reader.get_bounds()
+        self._pointing_inds = list(self.__meta_reader.read(idx_start, idx_end).keys())
 
     def bounds(self, channel: str | int) -> tuple[int, int]:
         """Sample bounds of the specific channel
@@ -169,3 +158,16 @@ class DrfLoader(DataLoader):
             return self.__channel_reader.read_vector_1d(bound_start, bound_end - 1, channel)
         else:
             return self.__channel_reader.read_vector_1d(start_sample, vector_length, channel)
+
+    def pointing(self, sample: int) -> Pointing:
+        """Pointing data, data describing the radar pointing direction in spherical coordinates"""
+        if self.__meta_reader is None:
+            return Pointing(azimuth=0, elevation=0)
+        else:
+            for p_ind in self._pointing_inds:
+                if sample < p_ind:
+                    data = self.__meta_reader.read(p_ind)[p_ind]
+                    return Pointing(data["azimuth"], data["elevation"])
+
+            data = self.__meta_reader.read(self._pointing_inds[0])[self._pointing_inds[0]]
+            return Pointing(data["azimuth"], data["elevation"])

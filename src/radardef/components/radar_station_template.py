@@ -13,6 +13,7 @@ from radardef.components.converter_template import Converter
 from radardef.components.data_loader_template import DataLoader
 from radardef.components.validator_template import Validator
 from radardef.types import TargetFormat
+from spacecoords import frames, celestial, spherical
 
 
 class RadarStation:
@@ -28,10 +29,6 @@ class RadarStation:
         alt: Geographical altitude above geoid surface of radar station in meter.
         beam: The radar beam model for this station.
         beam_parameters: The parameters for the radar beam model for this station.
-        ecef (optional): The ITRS coordinates of the radar station.
-        ecef_lat (optional): The latitude of the ITRS coordinates of the radar station.
-        ecef_lon (optional): The longitude of the ITRS coordinates of the radar station.
-        ecef_alt (optional): The altitude of the ITRS coordinates of the radar station.
         min_elevation (optional): The minimum elevation the radar can measure at.
         noise_temperature (optional): The noise temperature in Kelvins intrinsic to the radar receiver.
         power (optional): The maximum power in Watts the radar transmitter can deliver.
@@ -86,22 +83,22 @@ class RadarStation:
         return self.__beam_parameters
 
     @property
-    def ecef(self) -> NDArray | None:
+    def ecef(self) -> NDArray:
         """The ITRS coordinates of the radar station."""
         return self.__ecef
 
     @property
-    def ecef_lat(self) -> float | None:
+    def ecef_lat(self) -> float:
         """The latitude of the ITRS coordinates of the radar station."""
         return self.__ecef_lat
 
     @property
-    def ecef_lon(self) -> float | None:
+    def ecef_lon(self) -> float:
         """The longitude of the ITRS coordinates of the radar station."""
         return self.__ecef_lon
 
     @property
-    def ecef_alt(self) -> float | None:
+    def ecef_alt(self) -> float:
         """The altitude of the ITRS coordinates of the radar station."""
         return self.__ecef_alt
 
@@ -135,6 +132,27 @@ class RadarStation:
         """Validator to confirm that the"""
         return self.__validator
 
+    def enu(self, ecefs: NDArray) -> NDArray:
+        """Converts a set of ECEF states to local ENU coordinates using geocentric zenith."""
+
+        rel_ = ecefs.copy()
+        rel_[:3, :] = rel_[:3, :] - self.ecef[:, None]
+        rel_[:3, :] = frames.ecef_to_enu(
+            self.ecef_lat,
+            self.ecef_lon,
+            rel_[:3, :],
+            degrees=True,
+        )
+        if ecefs.shape[0] > 3:
+            rel_[3:, :] = frames.ecef_to_enu(
+                self.ecef_lat,
+                self.ecef_lon,
+                rel_[3:, :],
+                degrees=True,
+            )
+
+        return rel_
+
     def __init__(
         self,
         station_id: str,
@@ -145,10 +163,6 @@ class RadarStation:
         alt: float,
         beam: Beam,
         beam_parameters: Parameters,
-        ecef: Optional[NDArray] = None,
-        ecef_lat: Optional[float] = None,
-        ecef_lon: Optional[float] = None,
-        ecef_alt: Optional[float] = None,
         min_elevation: Optional[float] = None,
         noise_temperature: Optional[float] = None,
         power: Optional[float] = None,
@@ -167,10 +181,11 @@ class RadarStation:
         self.__alt = alt
         self.__beam = beam
         self.__beam_parameters = beam_parameters
-        self.__ecef = ecef
-        self.__ecef_lat = ecef_lat
-        self.__ecef_lon = ecef_lon
-        self.__ecef_alt = ecef_alt
+        self.__ecef = celestial.geodetic_to_ITRS(lat, lon, alt, degrees=True)
+        ecef_lla = spherical.cart_to_sph(self.ecef, degrees=True)
+        self.__ecef_lat = ecef_lla[1]
+        self.__ecef_lon = 90 - ecef_lla[0]
+        self.__ecef_alt = ecef_lla[2]
         self.__min_elevation = min_elevation
         self.__noise_temperature = noise_temperature
         self.__power = power

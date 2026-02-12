@@ -73,12 +73,6 @@ class HDF5Loader(DataLoader):
         """Metadata, containing experiment data and bounds data"""
         return self.__meta
 
-    # TODO: change to carthesian coordinates
-    @property
-    def pointing(self) -> Pointing:
-        """Pointing data, data describing the radar pointing direction in spherical coordinates"""
-        return self.__pointing
-
     @property
     def channels(self) -> list[int] | list[str]:
         """All available channels"""
@@ -153,45 +147,41 @@ class HDF5Loader(DataLoader):
             vector_length = self.__samples_per_dump
 
         dump_index = start_sample // self.__samples_per_dump
-        windows = -(vector_length // -self.__samples_per_dump)
         sample_index = start_sample % self.__samples_per_dump
+        windows = -((sample_index + vector_length) // -self.__samples_per_dump)
 
         file = self._open_hdf5_file(self.__path)
 
-        raw_data = file[self.DATA][self.DATA_LEVEL][
-            dump_index : dump_index + windows,
-            self.REAL_IND : self.IMAG_IND + 1,
-            sample_index : sample_index + vector_length,
-        ]
+        # Concatenate the dump windows
+        raw_data = file[self.DATA][self.DATA_LEVEL][dump_index : dump_index + windows].reshape(2, -1)
 
         file.close()
 
+        # extract samples
         data = np.empty(vector_length, dtype=complex)
-        data.real = raw_data[:, self.REAL_IND]
-        data.imag = raw_data[:, self.IMAG_IND]
+        data.real = raw_data[self.REAL_IND, sample_index : sample_index + vector_length].flatten()
+        data.imag = raw_data[self.IMAG_IND, sample_index : sample_index + vector_length].flatten()
 
         return data
 
-    def _extract_pointing(self, path: Path) -> Pointing:
+    # TODO: change to carthesian coordinates
+
+    def pointing(self, sample: int) -> Pointing:
+        """Pointing data, data describing the radar pointing direction in spherical coordinates"""
+
+        block_id = sample // self.__samples_per_dump
+        return Pointing(azimuth=self.__pointing[block_id, 0], elevation=self.__pointing[block_id, 1])
+
+    def _extract_pointing(self, path: Path) -> npt.NDArray:
         """Extract pointing data from the parameter block"""
 
         file = self._open_hdf5_file(path)
-        data = []
-        for i in range(file[self.DATA][self.PARBLOCK][self.PARBLOCK].shape[0]):
-
-            data.append(
-                (
-                    i * self.__samples_per_dump,
-                    {
-                        "azimuth": file[self.DATA][self.PARBLOCK][self.PARBLOCK][i][self.PARBLOCK_AZIMUTH],
-                        "elevation": file[self.DATA][self.PARBLOCK][self.PARBLOCK][i][
-                            self.PARBLOCK_ELEVATION
-                        ],
-                    },
-                )
-            )
+        data = np.zeros((file[self.DATA][self.PARBLOCK][self.PARBLOCK].shape[0], 2))
+        for i in range(data.shape[0]):
+            data[i, 0] = file[self.DATA][self.PARBLOCK][self.PARBLOCK][i][self.PARBLOCK_AZIMUTH]
+            data[i, 1] = file[self.DATA][self.PARBLOCK][self.PARBLOCK][i][self.PARBLOCK_ELEVATION]
         file.close()
-        return Pointing(data=data, sample_rate=1)
+        return data
 
     def _extract_meta(self, path: Path) -> Metadata:
         """
@@ -243,7 +233,7 @@ class HDF5Loader(DataLoader):
             t_tx_end_usec=exp_params["tx_end"] + t_samp_usec,
             t_cal_on_usec=exp_params["cal_on"],
             t_cal_off_usec=exp_params["cal_off"],
-            wavelength=scipy.constants.c / radar_frequency * 1e6,
+            wavelength=scipy.constants.c / (radar_frequency * 1e6),
             # code=load_radar_code(expname), #TODO: Fix code for leo_mpark
         )
 

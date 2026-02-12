@@ -109,7 +109,7 @@ def convert_eiscat_to_drf(
         meta_first["exp"]["sample_rate"],  # sample rate numerator
         1,  # samplerate denominator
         np.int16,
-        meta_first["sample"]["file_start"],
+        start_global_index=0,
         subdir_cadence_secs=3600,  # one dir per hour
         file_cadence_secs=1,  # one file per second
         is_complex=True,
