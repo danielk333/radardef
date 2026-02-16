@@ -8,8 +8,7 @@ from radardef.collections import (
 )
 from radardef.components import DataLoader, RadarStation
 from radardef.radar_stations import ESR, TSDR, Eiscat3D, EiscatUHF, EiscatVHF, Mu, Pansy
-from radardef.types import SourceFormat, TargetFormat
-from radardef.types import Eiscat3DLocation, EiscatUHFLocation, DishDiameter
+from radardef.types import DishDiameter, Eiscat3DLocation, EiscatUHFLocation, SourceFormat, TargetFormat
 
 
 class RadarDef:

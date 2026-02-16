@@ -2,6 +2,7 @@
 
 from pyant.beam import Beam
 from pyant.types import Parameters
+
 from radardef.components.radar_station_template import RadarStation
 from radardef.radar_stations.eiscat.beams.e3d import (
     eiscat_3d_single_subarray_beam,

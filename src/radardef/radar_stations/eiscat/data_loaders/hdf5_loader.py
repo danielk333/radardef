@@ -1,14 +1,15 @@
+import logging
+import re
 from pathlib import Path
 from typing import Optional
 
+import h5py
 import numpy as np
 import numpy.typing as npt
 import scipy.constants
-import logging
-import h5py
-import re
+
 from radardef.components.data_loader_template import DataLoader
-from radardef.radar_stations.eiscat.utils import load_radar_code, load_expconfig
+from radardef.radar_stations.eiscat.utils import load_expconfig, load_radar_code
 from radardef.radar_stations.eiscat.utils.drf_utils import ts_from_str
 from radardef.radar_stations.eiscat.validators import HDF5
 from radardef.types import (

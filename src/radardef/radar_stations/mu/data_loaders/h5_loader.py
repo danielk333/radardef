@@ -7,7 +7,7 @@ import logging
 import math
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Optional
+from typing import Optional
 
 import h5py
 import numpy as np

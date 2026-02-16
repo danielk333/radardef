@@ -10,7 +10,7 @@ for next available sample.
 """
 
 from pathlib import Path
-from typing import Any, Iterable, Optional
+from typing import Any, Optional
 
 import digital_rf
 import numpy as np

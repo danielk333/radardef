@@ -18,8 +18,8 @@ from typing import Any, Optional
 import numpy as np
 import numpy.typing as npt
 import scipy.constants
-
 from pyant.models import Array, ArrayParams, InterpolatedArray, InterpolatedArrayParams
+
 from radardef.tools.types import NDArray_2xN, NDArray_N
 
 from .data import DATA_PATHS

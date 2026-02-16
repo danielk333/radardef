@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "radardef"
-version = "0.2.1"
+version = "0.3.0"
 description = "Radar station specifications and data utilities"
 readme = { file = "README.md", content-type = "text/markdown" }
 authors = [
@@ -23,7 +23,7 @@ classifiers = [
   "Operating System :: OS Independent",
   "License :: OSI Approved :: MIT License",
 ]
-requires-python = ">=3.11"
+requires-python = ">=3.10"
 dependencies = [
   "pyant >= 1.1.0",
   "spacecoords >= 0.1.2",
@@ -35,6 +35,7 @@ dependencies = [
   "requests >= 2.28.2",
   "lxml",
   "astropy>=6",
+  "strenum ; python_version<'3.11'"
 ]
 
 [project.urls]
@@ -47,14 +48,12 @@ radardef = "radardef.cli:main"
 [project.optional-dependencies]
 develop = [
   "pytest",
-  "flake8",
   "wheel",
   "build",
   "twine",
   "auditwheel",
   "pytest-cov",
-  "black",
-  "isort",
+  "ruff"
 ]
 type_checker = ["mypy >= 1.18.2", "xenon"]
 profiling = ["yappi >= 1.4.0"]
@@ -80,8 +79,14 @@ license-files = ["LICENSE"]
 [tool.setuptools.packages.find]
 where = ["src"]
 
-[tool.black]
+[tool.ruff]
 line-length = 110
+
+[tool.ruff.lint.per-file-ignores]
+"__init__.py" = ["F401"]
+
+[tool.ruff.lint]
+ignore = ["E203","D203","E251","E501","E226"]
 
 [tool.pytest.ini_options]
 addopts = "-v --cov=radardef"

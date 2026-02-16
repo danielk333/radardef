@@ -10,7 +10,6 @@ from pathlib import Path
 from typing import Any, Optional
 
 import numpy as np
-import scipy.constants
 from tqdm import tqdm
 
 import radardef.radar_stations.eiscat.utils.digitalrf_wrapper as drf_wrapper
@@ -158,7 +157,7 @@ def convert_eiscat_to_drf(
         """Log the convert process"""
         if logger:
             if idx + 1 == n_files or idx % period == 0:
-                logger.debug(f"write progress {idx+1}/{n_files}")
+                logger.debug(f"write progress {idx + 1}/{n_files}")
 
     def write_pointing(sample: int, pointing_data: dict[str, float]) -> None:
         """write pointing data"""

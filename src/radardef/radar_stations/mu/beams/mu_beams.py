@@ -6,11 +6,11 @@ from typing import Any, Optional
 
 import numpy as np
 import scipy.interpolate
-
 from pyant.models import Array, ArrayParams, InterpolatedArray, InterpolatedArrayParams
+from spacecoords.spherical import cart_to_sph
+
 from radardef.radar_stations.mu.beams.data import DATA_PATHS
 from radardef.tools.types import CarthesianCoordinates_3xN, NDArray_2, NDArray_2xN
-from spacecoords.spherical import cart_to_sph
 
 
 def mu_array_beam() -> tuple[Array, ArrayParams]:

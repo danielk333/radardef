@@ -6,14 +6,14 @@ from pathlib import Path
 from typing import Optional
 
 from numpy.typing import NDArray
-
 from pyant import Beam
 from pyant.types import Parameters
+from spacecoords import celestial, frames, spherical
+
 from radardef.components.converter_template import Converter
 from radardef.components.data_loader_template import DataLoader
 from radardef.components.validator_template import Validator
 from radardef.types import TargetFormat
-from spacecoords import frames, celestial, spherical
 
 
 class RadarStation:

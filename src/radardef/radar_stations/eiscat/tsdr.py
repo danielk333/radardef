@@ -2,6 +2,7 @@
 
 from pyant.beam import Beam
 from pyant.types import Parameters
+
 from radardef.components.radar_station_template import RadarStation
 from radardef.radar_stations.eiscat.beams.tsdr import tsdr_beam, tsdr_phased_beam
 from radardef.types import StationID

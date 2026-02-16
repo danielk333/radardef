@@ -1,9 +1,8 @@
 """A collection of functions and information for the Eiscat Svalbard Radar (ESR) system."""
 
 import numpy as np
-
-from spacecoords.spherical import sph_to_cart
 from pyant.models import Cassegrain, CassegrainParams
+from spacecoords.spherical import sph_to_cart
 
 
 def esr_32m_cassegrain_beam() -> tuple[Cassegrain, CassegrainParams]:

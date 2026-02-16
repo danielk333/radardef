@@ -2,6 +2,7 @@
 
 from pyant import Beam
 from pyant.types import Parameters
+
 from radardef.components.radar_station_template import RadarStation
 from radardef.types import StationID
 

@@ -1,6 +1,13 @@
 """Enums to simplify the usage of the radar objects"""
 
-from enum import IntEnum, StrEnum, auto
+from enum import IntEnum, auto
+
+try:
+    from enum import StrEnum
+except ImportError:
+    from strenum import (  # type: ignore[assignment, no-redef, unused-ignore, import-not-found]
+        StrEnum,  # type: ignore[import-not-found,no-redef, unused-ignore]
+    )
 
 
 class SourceFormat(StrEnum):

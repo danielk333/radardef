@@ -21,7 +21,6 @@ import h5py
 import numpy as np
 from tqdm import tqdm
 
-import radardef.tools as tools
 from radardef.components.converter_template import Converter
 from radardef.types import SourceFormat, TargetFormat
 

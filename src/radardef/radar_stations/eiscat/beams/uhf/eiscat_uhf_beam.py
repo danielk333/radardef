@@ -1,7 +1,6 @@
 """A collection of functions and information for the EISCAT UHF Radar system."""
 
 import numpy as np
-
 from pyant.beam import Beam
 from pyant.models import (
     Cassegrain,

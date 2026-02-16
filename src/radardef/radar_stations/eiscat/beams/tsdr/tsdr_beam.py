@@ -10,7 +10,6 @@ Notes:
 """
 
 import numpy as np
-
 from pyant.models import (
     FiniteCylindricalParabola,
     FiniteCylindricalParabolaParams,

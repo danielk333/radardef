@@ -348,7 +348,7 @@ def default_pointing(sample: int, pointing_data: dict[str, float]) -> None:
 def default_progress(idx: int, n_files: int, period: int = 10) -> None:
     """Default progress function, print write progress"""
     if idx + 1 == n_files or idx % period == 0:
-        print(f"write progress {idx+1}/{n_files}")
+        print(f"write progress {idx + 1}/{n_files}")
 
 
 def eiscat_process(
@@ -373,7 +373,6 @@ def eiscat_process(
     sample_write = None
 
     for idx, file in enumerate(files):
-
         if log_progress:
             log_progress(idx, len(files), 10)
 
@@ -385,7 +384,6 @@ def eiscat_process(
             sample_write = sample_file_start
 
         if not errors:
-
             # check that we are not writing old data
             if sample_file_start < sample_write:
                 errors.append("attempt to overwrite data")

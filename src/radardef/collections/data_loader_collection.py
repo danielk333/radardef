@@ -7,8 +7,6 @@ import copy
 import logging
 from pathlib import Path
 
-import numpy as np
-
 from radardef.components.data_loader_template import DataLoader
 from radardef.components.radar_station_template import RadarStation
 from radardef.types import TargetFormat

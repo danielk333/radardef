@@ -1,7 +1,6 @@
 """A collection of functions and information for the EISCAT VHF Radar system."""
 
 import numpy as np
-
 from pyant.models import FiniteCylindricalParabola, FiniteCylindricalParabolaParams
 
 
