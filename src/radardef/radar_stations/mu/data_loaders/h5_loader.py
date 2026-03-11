@@ -284,9 +284,13 @@ class H5Loader(DataLoader):
 
         # sort accoring to timestamp
         paths.sort()
+
+        previous_end_point = "unknwn"
+
         for i, f in enumerate(paths):
             h5file = self._open_h5_file(f)
 
+            # Extract meta data, should be general for all files
             if i == 0:
                 experiment = ExpParams(
                     name=h5file.attrs["filename"],
@@ -314,15 +318,26 @@ class H5Loader(DataLoader):
                 start_time = datetime.strptime(
                     str(h5file.attrs["record_start_time"])[0:26], "%Y-%m-%dT%H:%M:%S.%f"
                 )
-
+            # Store end point of the directory
             elif i == (len(paths) - 1):
                 end_time = datetime.strptime(
                     str(h5file.attrs["record_end_time"])[0:26], "%Y-%m-%dT%H:%M:%S.%f"
                 )
 
+            # Validate that the data is sequential
+            if i != 0:
+                current_start_point = str(h5file.attrs["record_start_time"])[0:26]
+                if previous_end_point != current_start_point:
+                    self.__logger.warning(
+                        f"The data is not sequential, there is a time gap before file {f.name}."
+                        f"The end point of previous file was: {previous_end_point} and the start point of current file is: {current_start_point}"
+                    )
+            previous_end_point = str(h5file.attrs["record_end_time"])[0:26]
+
+            # Calculate channel sample bounds
             ipp_length = int(experiment.t_ipp_usec / experiment.t_samp_usec)
-            for i, data in enumerate(h5file["data"]):
-                channel = i + 1
+            for j, data in enumerate(h5file["data"]):
+                channel = j + 1
                 if channel in experiment.rx_channels:
                     min_max = (0, len(data) * ipp_length)
                     if channel not in sample_bounds:
@@ -333,8 +348,8 @@ class H5Loader(DataLoader):
             h5file.close()
 
         bounds = BoundParams(
-            ts_start_usec=start_time.timestamp(),
-            ts_end_usec=end_time.timestamp(),
+            ts_start_usec=int(start_time.timestamp() * 1e6),
+            ts_end_usec=int(end_time.timestamp() * 1e6),
         )
 
         return Metadata(experiment, bounds), sample_bounds
