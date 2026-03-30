@@ -52,5 +52,5 @@ class ESR(RadarStation):
             frequency=500e6,
             converters=[EiscatMatbzToDrf()],
             validator=EiscatMatlab(),
-            data_loaders=[DrfLoader()],
+            data_loaders=[DrfLoader],
         )

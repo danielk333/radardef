@@ -6,16 +6,14 @@ from typing import Optional
 import h5py
 import numpy as np
 import numpy.typing as npt
-import scipy.constants
 
-from radardef.components.data_loader_template import DataLoader
-from radardef.radar_stations.eiscat.utils import load_expconfig, load_radar_code
+from radardef.components import DataLoader
+from radardef.radar_stations.eiscat.experiments import get_experiment
 from radardef.radar_stations.eiscat.utils.drf_utils import ts_from_str
 from radardef.radar_stations.eiscat.validators import HDF5
 from radardef.types import (
     BoundParams,
-    ExpParams,
-    Metadata,
+    ExpDef,
     Pointing,
     TargetFormat,
 )
@@ -53,6 +51,9 @@ class HDF5Loader(DataLoader):
 
     __logger = logging.getLogger(__name__)
 
+    converted_format = TargetFormat.HDF5
+    validator = HDF5()
+
     # Data section
     DATA = "Data"
     DATA_LEVEL = "L1"
@@ -70,18 +71,18 @@ class HDF5Loader(DataLoader):
     EXPERIMENTNAME = "ExperimentName"
 
     @property
-    def meta(self) -> Metadata:
-        """Metadata, containing experiment data and bounds data"""
-        return self.__meta
+    def epoch_bounds(self) -> BoundParams:
+        """Data epoch bounds"""
+        return self.__epoch_bounds
 
     @property
     def channels(self) -> list[int] | list[str]:
         """All available channels"""
-        return self.meta.experiment.rx_channels
+        return self.experiment.rx_channels
 
-    def __init__(self) -> None:
-        super().__init__(TargetFormat.HDF5, HDF5())
-        self.__meta = Metadata(ExpParams(), BoundParams())
+    def __init__(self, exp: Optional[ExpDef] = None) -> None:
+        super().__init__(exp)
+        self.__epoch_bounds = BoundParams()
 
     def load(self, path: Path | str) -> None:
         """
@@ -90,10 +91,17 @@ class HDF5Loader(DataLoader):
         Args:
             path: path to data file
         """
-
         self.__path = Path(path).resolve()
+        if not self._experiment:
+            file = self._open_hdf5_file(self.__path)
+            name = file[self.PORTALDBREFERENCE][self.EXPERIMENTNAME][()][0].decode()
+            file.close
+
+            expname, expvers, owner = self._expinfo_split(name)
+            self.__experiment = get_experiment(group=expname, version=expvers)
+
         self.__dumps, self.__samples_per_dump = self._get_data_size(self.__path)
-        self.__meta = self._extract_meta(self.__path)
+        self.__epoch_bounds = self._extract_bounds(self.__path)
         self.__pointing = self._extract_pointing(self.__path)
 
     def bounds(self, channel: str | int) -> tuple[int, int]:
@@ -184,59 +192,20 @@ class HDF5Loader(DataLoader):
         file.close()
         return data
 
-    def _extract_meta(self, path: Path) -> Metadata:
+    def _extract_bounds(self, path: Path) -> BoundParams:
         """
         Extract meta data from HDF5 file and experiment config files
 
         """
         file = self._open_hdf5_file(path)
-        name = file[self.PORTALDBREFERENCE][self.EXPERIMENTNAME][()][0].decode()
 
-        expname, expvers, owner = self._expinfo_split(name)
-        cfg = load_expconfig(expname)
-        cfv = cfg[expvers]
-
-        items = [
-            "sample_rate",
-            "ipp",
-            "tx_pulse_length",
-            "rx_start",
-            "rx_end",
-            "tx_start",
-            "tx_end",
-            "cal_on",
-            "cal_off",
-        ]
-
-        exp_params = {}
-        for item in items:
-            data = cfv.get(item)
-            exp_params[item] = float(data) if data is not None else 0
-
-        t_samp_usec = int((1 / exp_params["sample_rate"]) * 1e6)
-        radar_frequency = file[self.DATA]["ParBlock"]["ParBlock"][0][self.PARBLOCK_FREQUENCY]
-        ipp_samps = exp_params["ipp"] / t_samp_usec
-        channel = file[self.PORTALDBREFERENCE][self.DATASTREAM][0].decode()
-
-        experiment = ExpParams(
-            name=name,
-            radar_frequency=radar_frequency,
-            t_ipp_usec=exp_params["ipp"],
-            sample_rate=exp_params["sample_rate"],
-            ipp_samps=int(ipp_samps),
-            t_samp_usec=t_samp_usec,
-            rx_channels=[channel],
-            tx_channel=channel,
-            tx_pulse_length=int(exp_params["tx_pulse_length"]) + 1,
-            t_rx_start_usec=exp_params["rx_start"],
-            t_rx_end_usec=exp_params["rx_end"],
-            t_tx_start_usec=exp_params["tx_start"],
-            t_tx_end_usec=exp_params["tx_end"] + t_samp_usec,
-            t_cal_on_usec=exp_params["cal_on"],
-            t_cal_off_usec=exp_params["cal_off"],
-            wavelength=scipy.constants.c / (radar_frequency * 1e6),
-            # code=load_radar_code(expname), #TODO: Fix code for leo_mpark
-        )
+        if (
+            self.experiment.radar_frequency
+            != file[self.DATA]["ParBlock"]["ParBlock"][0][self.PARBLOCK_FREQUENCY]
+        ):
+            raise ValueError("Radar frequency does not match with frequency in measurement file")
+        if self.experiment.rx_channels[0] != file[self.PORTALDBREFERENCE][self.DATASTREAM][0].decode():
+            raise ValueError("Rx channel does not match with channel in measurement file")
 
         start_time_sec = (
             ts_from_str(file[self.DATA][self.ENDTIME][0].decode()) - file[self.DATA][self.INTEGRATIONTIME][0]
@@ -244,7 +213,7 @@ class HDF5Loader(DataLoader):
         end_time_sec = ts_from_str(file[self.DATA][self.ENDTIME][-1].decode())
         bounds = BoundParams(ts_start_usec=int(start_time_sec * 1e6), ts_end_usec=int(end_time_sec * 1e6))
         file.close()
-        return Metadata(experiment=experiment, bounds=bounds)
+        return bounds
 
     def _get_data_size(self, path: Path) -> tuple[int, int]:
         """Extract amount of dumps and sample per dump from hdf5 file"""
@@ -294,4 +263,4 @@ class HDF5Loader(DataLoader):
 
     def _is_channel_present(self, chnl: str | int) -> bool:
         """is channel present in the data"""
-        return chnl in self.meta.experiment.rx_channels
+        return chnl in self.experiment.rx_channels

@@ -24,4 +24,4 @@ class H5(Validator):
 
     def _is_h5_file(self, src: Path) -> bool:
         """Compatible h5 file"""
-        return (len(src.name) == 32) and (src.name[10] == "T") and (src.suffix == ".h5")
+        return (src.name[10] == "T") and (src.suffix == ".h5")

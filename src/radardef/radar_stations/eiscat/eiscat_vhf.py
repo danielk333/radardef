@@ -28,5 +28,5 @@ class EiscatVHF(RadarStation):
             frequency=224e6,
             converters=[EiscatMatbzToDrf()],
             validator=EiscatMatlab(),
-            data_loaders=[DrfLoader(), HDF5Loader()],
+            data_loaders=[DrfLoader, HDF5Loader],
         )

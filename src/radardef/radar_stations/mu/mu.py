@@ -45,5 +45,5 @@ class Mu(RadarStation):
             frequency=46.5e6,
             converters=[MuiToH5()],
             validator=MUI(),
-            data_loaders=[H5Loader()],
+            data_loaders=[H5Loader],
         )

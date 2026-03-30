@@ -1,6 +1,8 @@
 # Radar station
+
 ---
-A radar station is the full description of a radar station. It shall (*if available*) contain radar station
+
+A radar station is the full description of a radar station. It shall (_if available_) contain radar station
 specifications, the stations source format [validator](radar_station.md#validator) , data format [converter](radar_station.md#converter) and [data loader](radar_station.md#data-loader) to be able to extract data to one or several
 usable format.
 
@@ -10,7 +12,9 @@ measurement data.
 See [examples/radar_station](../examples/radar_station.py) for more details.
 
 ## Specifications
+
 ---
+
 Each radar must contain the following specifications:
 
 - [station_id](../reference/radardef/components/radar_station_template.md#radardef.components.radar_station_template.RadarStation.station_id)
@@ -25,15 +29,16 @@ Each radar must contain the following specifications:
 From this we can determine the precise location of the station and with the [beam](https://danielk.developer.irf.se/pyant/reference/pyant/beam/)
 the radiation pattern can be defined. For more beam examples see [pyant](https://danielk.developer.irf.se/pyant/examples/)
 
-
 ## Data processing components
+
 ---
+
 To handle the "raw" data from a radarstation the following components are needed.
 
 ### Validator
+
 The [Validator](../reference/radardef/components/validator_template.md) is a very simple class, it is used to map a [SourceFormat/TargetFormat/String](../reference/radardef/types/formats.md#radardef.types.formats.SourceFormat) to a specific
 data format to be able to map file formats to radars, converters or loaders.
-
 
 ### Converter
 
@@ -84,6 +89,7 @@ Stucture to be able to handle multiple directories
             └── MUI123458
 
 ```
+
 <span style="color: red;">Not ok</span>
 
 ```bash
@@ -115,31 +121,26 @@ trying to convert the leo_bpark_2.1u_NO@uhf.
             └── MUI123458
 ```
 
-Here *MUI123459* will be ignored/lost as the converter will only convert the root directories.
-
+Here _MUI123459_ will be ignored/lost as the converter will only convert the root directories.
 
 ### Data loader
 
 A dataloader should read and load data from a file to a standardized usable format.
 
-A dataloader is at most times connected to converted files e.g from *MUI* to *H5*, therefore the dataloader
+A dataloader is at most times connected to converted files e.g from _MUI_ to _H5_, therefore the dataloader
 contains the parameter [converted_format](../reference/radardef/components/data_loader_template.md#radardef.components.data_loader_template.DataLoader.converted_format)
 to map what files are compatible with the loader.
 
 Each data loader is mapped to a [Validator](../reference/radardef/components/validator_template.md),
 this is to validate the compability of any file with the loader, if not compatible no point in loading the file.
-The entry point of the class is the [load](../reference/radardef/components/data_loader_template.md#radardef.components.data_loader_template.DataLoader.load) function, if load is not called the [DataLoader](../reference/radardef/components/data_loader_template.md) is useless.
-What load does is extracting and chaching the metadata and path, in this way there is no need to store the whole
-file in RAM.
 
-The [Metadata](../reference/radardef/types/types.md#radardef.types.types.Metadata) is a named tuple containing the measurements static variables, it has been split into two data types,
-[BoundParams](../reference/radardef/types/types.md#radardef.types.types.BoundParams) and [ExpParams](../reference/radardef/types/types.md#radardef.types.types.ExpParams). More details about the Metadata is available at [Format-MetaData](../formats/format_meta.md)
+The third input is the [ExpDef](../reference/radardef/types/types.md#radardef.types.types.experiment.ExpDef) which is the experiment definition. To properly be able to decode the data the specification from the experiment is needed. If none is provided the loader will try to find a suitable experiment definition dependent on the file name.
+
+The entry point of the class is the [load](../reference/radardef/components/data_loader_template.md#radardef.components.data_loader_template.DataLoader.load) function, if load is not called the [DataLoader](../reference/radardef/components/data_loader_template.md) is useless.
+What load does is extracting experiment parameters, defining how to decode the data and gathering general information such as amount of data available. By getting the data specification it is possible to retrive data in chuncks and we remove the need to store the whole file in RAM.
 
 To get actual measurement points from the data loader one can request the needed samples from the
 [Read](../reference/radardef/components/data_loader_template.md#radardef.components.data_loader_template.DataLoader.read)
 function.
 
 See [examples/load_data](../examples/load_data.py) for more details.
-
-
-

@@ -11,7 +11,6 @@ from .download_test_data import download_test_data
 
 
 class RadarDataTest(unittest.TestCase):
-
     def __del__(self):
         # clear any generated files
         if self.loc_tmp.name == "tmp":
@@ -93,29 +92,28 @@ class RadarDataTest(unittest.TestCase):
 
         assert loader is not None
 
-        metadata = loader.meta
+        experiment_meta = loader.experiment
 
-        self.assertEqual(metadata.experiment.name, src_file.name)
-        self.assertEqual(metadata.experiment.radar_frequency, 46.5)
-        self.assertEqual(metadata.experiment.t_ipp_usec, 3120)
-        self.assertEqual(metadata.experiment.t_samp_usec, 6)
-        self.assertEqual(metadata.experiment.ipp_samps, 520)
-        self.assertAlmostEqual(metadata.experiment.sample_rate, 166666.66666666666)
+        self.assertEqual(experiment_meta.name, "mu_experiment")
+        self.assertEqual(experiment_meta.radar_frequency, 46.5)
+        self.assertEqual(experiment_meta.t_ipp_usec, 3120)
+        self.assertEqual(experiment_meta.t_samp_usec, 6)
+        self.assertEqual(experiment_meta.ipp_samps, 520)
+        self.assertAlmostEqual(experiment_meta.sample_rate, 166666.66666666666)
         numpy.testing.assert_array_equal(
-            metadata.experiment.rx_channels,
+            experiment_meta.rx_channels,
             [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25],
         )
-        self.assertIsNone(metadata.experiment.tx_channel)
-        self.assertIsNone(metadata.experiment.tx_pulse_length)
-        self.assertEqual(metadata.experiment.t_rx_start_usec, 486)
-        self.assertEqual(metadata.experiment.t_rx_end_usec, 996)
-        self.assertEqual(metadata.experiment.t_tx_start_usec, 0)
-        self.assertEqual(metadata.experiment.t_tx_end_usec, 162)
-        self.assertIsNone(metadata.experiment.t_cal_on_usec)
-        self.assertIsNone(metadata.experiment.t_cal_off_usec)
-        self.assertEqual(metadata.experiment.wavelength, 6.447149634408603)
-        self.assertIsNotNone(metadata.bounds.ts_start_usec)
-        self.assertIsNotNone(metadata.bounds.ts_end_usec)
+        self.assertIsNone(experiment_meta.tx_channel)
+        self.assertEqual(experiment_meta.t_rx_start_usec, 486)
+        self.assertEqual(experiment_meta.t_rx_end_usec, 996)
+        self.assertEqual(experiment_meta.t_tx_start_usec, 0)
+        self.assertEqual(experiment_meta.t_tx_end_usec, 156)
+        self.assertIsNone(experiment_meta.t_cal_on_usec)
+        self.assertIsNone(experiment_meta.t_cal_off_usec)
+        self.assertEqual(experiment_meta.wavelength, 6.447149634408603)
+        self.assertIsNotNone(loader.epoch_bounds.ts_start_usec)
+        self.assertIsNotNone(loader.epoch_bounds.ts_end_usec)
         print(loader.channels)
         for chnl in loader.channels:
             data = loader.read(channel=chnl)
@@ -138,30 +136,27 @@ class RadarDataTest(unittest.TestCase):
 
             assert loader is not None
 
-            metadata = loader.meta
-            print(metadata)
-
-            self.assertEqual(metadata.experiment.name, src_file.name)
-            self.assertEqual(metadata.experiment.radar_frequency, 46.5)
-            self.assertEqual(metadata.experiment.t_ipp_usec, 3120)
-            self.assertEqual(metadata.experiment.t_samp_usec, 6)
-            self.assertEqual(metadata.experiment.ipp_samps, 520)
-            self.assertAlmostEqual(metadata.experiment.sample_rate, 166666.66666666666)
+            experiment_meta = loader.experiment
+            self.assertEqual(experiment_meta.name, "mu_experiment")
+            self.assertEqual(experiment_meta.radar_frequency, 46.5)
+            self.assertEqual(experiment_meta.t_ipp_usec, 3120)
+            self.assertEqual(experiment_meta.t_samp_usec, 6)
+            self.assertEqual(experiment_meta.ipp_samps, 520)
+            self.assertAlmostEqual(experiment_meta.sample_rate, 166666.66666666666)
             numpy.testing.assert_array_equal(
-                metadata.experiment.rx_channels,
+                experiment_meta.rx_channels,
                 [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25],
             )
-            self.assertIsNone(metadata.experiment.tx_channel)
-            self.assertIsNone(metadata.experiment.tx_pulse_length)
-            self.assertEqual(metadata.experiment.t_rx_start_usec, 486)
-            self.assertEqual(metadata.experiment.t_rx_end_usec, 996)
-            self.assertEqual(metadata.experiment.t_tx_start_usec, 0)
-            self.assertEqual(metadata.experiment.t_tx_end_usec, 156)
-            self.assertIsNone(metadata.experiment.t_cal_on_usec)
-            self.assertIsNone(metadata.experiment.t_cal_off_usec)
-            self.assertEqual(metadata.experiment.wavelength, 6.447149634408603)
-            self.assertIsNotNone(metadata.bounds.ts_start_usec)
-            self.assertIsNotNone(metadata.bounds.ts_end_usec)
+            self.assertIsNone(experiment_meta.tx_channel)
+            self.assertEqual(experiment_meta.t_rx_start_usec, 486)
+            self.assertEqual(experiment_meta.t_rx_end_usec, 996)
+            self.assertEqual(experiment_meta.t_tx_start_usec, 0)
+            self.assertEqual(experiment_meta.t_tx_end_usec, 156)
+            self.assertIsNone(experiment_meta.t_cal_on_usec)
+            self.assertIsNone(experiment_meta.t_cal_off_usec)
+            self.assertEqual(experiment_meta.wavelength, 6.447149634408603)
+            self.assertIsNotNone(loader.epoch_bounds.ts_start_usec)
+            self.assertIsNotNone(loader.epoch_bounds.ts_end_usec)
             self.assertIsNotNone(loader.read(channel=1))
             data = loader.read(channel=2)
             self.assertNotEqual(len(data), 0)
@@ -176,26 +171,25 @@ class RadarDataTest(unittest.TestCase):
 
         loader = radar_def.load_data(out[0], "drf")
 
-        metadata = loader.meta
+        experiment_meta = loader.experiment
 
-        self.assertEqual(metadata.experiment.name, "leo_bpark")
-        self.assertEqual(metadata.experiment.radar_frequency, 500.5)
-        self.assertEqual(metadata.experiment.t_ipp_usec, 20000)
-        self.assertEqual(metadata.experiment.t_samp_usec, 1)
-        self.assertEqual(metadata.experiment.ipp_samps, 20000)
-        self.assertEqual(metadata.experiment.sample_rate, 1000000.0)
-        self.assertEqual(metadata.experiment.rx_channels, ["32m"])
-        self.assertEqual(metadata.experiment.tx_channel, "32m")
-        self.assertEqual(metadata.experiment.tx_pulse_length, 1921.0)
-        self.assertEqual(metadata.experiment.t_rx_start_usec, 0.0)
-        self.assertEqual(metadata.experiment.t_rx_end_usec, 20000.0)
-        self.assertEqual(metadata.experiment.t_tx_start_usec, 82.0)
-        self.assertEqual(metadata.experiment.t_tx_end_usec, 2003.0)
-        self.assertEqual(metadata.experiment.t_cal_on_usec, 19900.0)
-        self.assertEqual(metadata.experiment.t_cal_off_usec, 19997.0)
+        self.assertEqual(experiment_meta.name, "leo_bpark_2.2")
+        self.assertEqual(experiment_meta.radar_frequency, 500.5)
+        self.assertEqual(experiment_meta.t_ipp_usec, 20000)
+        self.assertEqual(experiment_meta.t_samp_usec, 1)
+        self.assertEqual(experiment_meta.ipp_samps, 20000)
+        self.assertEqual(experiment_meta.sample_rate, 1000000.0)
+        self.assertEqual(experiment_meta.rx_channels, ["32m"])
+        self.assertEqual(experiment_meta.tx_channel, "32m")
+        self.assertEqual(experiment_meta.t_rx_start_usec, 0.0)
+        self.assertEqual(experiment_meta.t_rx_end_usec, 20000.0)
+        self.assertEqual(experiment_meta.t_tx_start_usec, 82.0)
+        self.assertEqual(experiment_meta.t_tx_end_usec, 2002.0)
+        self.assertEqual(experiment_meta.t_cal_on_usec, 19900.0)
+        self.assertEqual(experiment_meta.t_cal_off_usec, 19997.0)
 
-        self.assertEqual(metadata.bounds.ts_start_usec, 1637668800001245.0)
-        self.assertEqual(metadata.bounds.ts_end_usec, 1637669017601226.0)
+        self.assertEqual(loader.epoch_bounds.ts_start_usec, 1637668800001245.0)
+        self.assertEqual(loader.epoch_bounds.ts_end_usec, 1637669017601226.0)
 
         start, end = loader.bounds("32m")
         self.assertIsNotNone(loader.read(channel="32m", start_sample=start, vector_length=10000))

@@ -200,6 +200,7 @@ def convert_eiscat_to_drf(
     exp = meta[Metaparam.EXPERIMENT]
 
     exp[Expparam.NAME] = str(meta_first["exp"]["name"])
+    exp[Expparam.VERSION] = str(meta_first["exp"]["version"])
     exp[Expparam.TX_PULSE_LENGTH] = str(meta_first["exp"]["tx_pulse_length"])
     exp[Expparam.T_RX_START_USEC] = str(meta_first["exp"]["rx_start"])
     exp[Expparam.T_RX_END_USEC] = str(meta_first["exp"]["rx_end"])

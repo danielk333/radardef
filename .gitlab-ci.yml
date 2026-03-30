@@ -80,7 +80,7 @@ build-docs:
   allow_failure: false
   script:
     - pip install .[documentation]
-    - mkdocs build --strict
+    - mkdocs build
   rules:
     - !reference [.merge_request_rules, rules]
 

@@ -42,5 +42,5 @@ class TSDR(RadarStation):
             frequency=1.8e9,
             converters=[EiscatMatbzToDrf()],
             validator=EiscatMatlab(),
-            data_loaders=[DrfLoader()],
+            data_loaders=[DrfLoader],
         )

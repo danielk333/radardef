@@ -96,6 +96,7 @@ class Expparam(StrEnum):
     """Experiment parameter keys"""
 
     NAME = auto()
+    VERSION = auto()
     TX_PULSE_LENGTH = auto()
     T_RX_START_USEC = auto()
     T_RX_END_USEC = auto()

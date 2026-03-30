@@ -1,6 +1,5 @@
 """Template of a Radar station"""
 
-import copy
 import logging
 from pathlib import Path
 from typing import Optional
@@ -13,7 +12,7 @@ from spacecoords import celestial, frames, spherical
 from radardef.components.converter_template import Converter
 from radardef.components.data_loader_template import DataLoader
 from radardef.components.validator_template import Validator
-from radardef.types import TargetFormat
+from radardef.types import ExpDef, TargetFormat
 
 
 class RadarStation:
@@ -170,7 +169,7 @@ class RadarStation:
         frequency: Optional[float] = None,
         converters: Optional[list[Converter]] = None,
         validator: Optional[Validator] = None,
-        data_loaders: Optional[list[DataLoader]] = None,
+        data_loaders: Optional[list[type[DataLoader]]] = None,
     ) -> None:
 
         self.__station_id = station_id
@@ -193,7 +192,7 @@ class RadarStation:
         self.__frequency = frequency
         self.__validator = validator
         self.__converters: dict[TargetFormat, Converter] = dict()
-        self.__data_loaders: dict[TargetFormat, DataLoader] = dict()
+        self.__data_loaders: dict[TargetFormat, type[DataLoader]] = dict()
 
         if converters is not None:
             for converter in converters:
@@ -207,7 +206,7 @@ class RadarStation:
         """Get all converters connected to this radar"""
         return list(self.__converters.values())
 
-    def get_data_loaders(self) -> list[DataLoader]:
+    def get_data_loaders(self) -> list[type[DataLoader]]:
         """Get all data loaders connected to this radar"""
         return list(self.__data_loaders.values())
 
@@ -215,7 +214,7 @@ class RadarStation:
         """Add a converter to this radar"""
         self.__converters[converter.target_format] = converter
 
-    def add_data_loader(self, data_loader: DataLoader) -> None:
+    def add_data_loader(self, data_loader: type[DataLoader]) -> None:
         """Add a data loader to this radar"""
         self.__data_loaders[data_loader.converted_format] = data_loader
 
@@ -236,19 +235,21 @@ class RadarStation:
 
         return None
 
-    def load_data(self, path: Path, converted_format: Optional[TargetFormat] = None) -> DataLoader | None:
+    def load_data(
+        self, path: Path, converted_format: Optional[TargetFormat] = None, experiment: Optional[ExpDef] = None
+    ) -> DataLoader | None:
         """Load converted data from this radar"""
         if converted_format is None:
             for data_loader in self.__data_loaders.values():
                 if data_loader.validate(path):
-                    loader = copy.deepcopy(data_loader)
+                    loader = data_loader(experiment)
                     loader.load(path)
                     return loader
             self.__logger.error("Source format not supported")
         else:
             try:
                 if self.__data_loaders[converted_format].validate(path):
-                    loader = copy.deepcopy(self.__data_loaders[converted_format])
+                    loader = self.__data_loaders[converted_format](experiment)
                     loader.load(path)
                     return loader
                 else:

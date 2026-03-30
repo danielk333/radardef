@@ -5,7 +5,7 @@ from unittest.mock import Mock, PropertyMock
 import numpy as np
 
 from radardef.components import Converter, DataLoader, RadarStation, Validator
-from radardef.types import Metadata, SourceFormat, TargetFormat
+from radardef.types import ExpDef, SourceFormat, TargetFormat
 
 
 def radar_mock(validator: Mock = None, converters: list[Mock] = None, data_loaders: list[Mock] = None):
@@ -38,14 +38,14 @@ def converter_mock(
 
 def data_loader_mock(
     converted_format: TargetFormat,
-    meta: Metadata,
+    experiment: ExpDef,
     validate_func: Callable[[Path], bool],
     read_func: Callable[[Path], np.ndarray],
 ):
 
     mock = Mock(spec=DataLoader)
     type(mock).converted_format = PropertyMock(return_value=converted_format)
-    type(mock).meta = PropertyMock(return_value=meta)
+    type(mock).experiment = PropertyMock(return_value=experiment)
     mock.validate = validate_func
     mock.load_data = read_func
     return mock

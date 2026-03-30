@@ -10,7 +10,7 @@ import numpy as np
 import scipy.io as sio
 from numpy.typing import NDArray
 
-from radardef.radar_stations.eiscat.utils import load_expconfig
+from radardef.radar_stations.eiscat.experiments import get_experiment
 from radardef.radar_stations.eiscat.utils.drf_utils import str_from_ts
 
 PARBL_ELEVATION: int = 8
@@ -212,20 +212,11 @@ def eiscat_load_file(
     mat = loadmat(str(filepath))
 
     host, expname, expvers, owner = expinfo_split(str(mat["d_ExpInfo"][0]))
-    cfg = load_expconfig(expname)
-    cfv = cfg[expvers]
+    exp = get_experiment(expname, expvers)
 
-    sample_rate_raw = cfv.get("sample_rate")
-    if sample_rate_raw is None:
-        raise Exception(f"Not possible to read sample rate")
-    sample_rate = float(sample_rate_raw)
-
-    file_secs_raw = cfv.get("file_secs")
-    if file_secs_raw is None:
-        raise Exception(f"Not possible to read file secs")
-    file_secs = float(file_secs_raw)
-
-    samples_per_file = int(file_secs * sample_rate)
+    sample_rate = exp.sample_rate
+    samples_per_file = exp.samples_per_file
+    file_secs = samples_per_file / sample_rate
     chnl = parse_foldername(filepath.parent.parent)[2]
 
     # global start time for sampling (repeated for all files)
@@ -246,8 +237,6 @@ def eiscat_load_file(
     # recording only started some time after ts_origin_sec
     # also the inprecision in ts_endfile_sec goes away in division
     file_idx = round((ts_endfile_sec - ts_origin_sec) / file_secs) - 1
-    # sample index for start of first file
-    samples_per_file = int(file_secs * sample_rate)
     # index of filestart
     idx_startfile = idx_origin + file_idx * samples_per_file
 
@@ -274,6 +263,7 @@ def eiscat_load_file(
     if offset != _offset:
         errors.append(f"filename inconsistency {offset} {_offset}")
 
+    tx_pulse_length = exp.t_tx_end_usec - exp.t_tx_start_usec
     meta: dict[str, dict[str, int | float | str | None]] = {
         "exp": {
             "name": expname,
@@ -283,14 +273,14 @@ def eiscat_load_file(
             "samples_per_file": n_samples,
             "file_secs": file_secs,
             "radar_frequency": float(mat["d_parbl"][0][PARBL_RADAR_FREQUENCY]),
-            "ipp": cfv.get("ipp"),
-            "tx_pulse_length": cfv.get("tx_pulse_length"),
-            "rx_start": cfv.get("rx_start"),
-            "rx_end": cfv.get("rx_end"),
-            "tx_start": cfv.get("tx_start"),
-            "tx_end": cfv.get("tx_end"),
-            "cal_on": cfv.get("cal_on"),
-            "cal_off": cfv.get("cal_off"),
+            "ipp": exp.t_ipp_usec,
+            "tx_pulse_length": tx_pulse_length,
+            "rx_start": exp.t_rx_start_usec,
+            "rx_end": exp.t_rx_end_usec,
+            "tx_start": exp.t_tx_start_usec,
+            "tx_end": exp.t_tx_end_usec,
+            "cal_on": exp.t_cal_on_usec,
+            "cal_off": exp.t_cal_off_usec,
         },
         "ts": {
             "origin": ts_origin_sec,

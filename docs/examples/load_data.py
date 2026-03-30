@@ -5,22 +5,24 @@
 # bounds and access to read data from the measurement.
 
 # Workaround to make jupyter notebook find utils
-import sys
 import os
+import sys
 from pathlib import Path
+
+from radardef.types import ExpDef
 
 sys.path.insert(1, str(Path(os.path.abspath("")) / "docs" / "examples"))
 
-import radardef
-from radardef.types import EiscatUHFLocation, TargetFormat, Metadata
-from pathlib import Path
 import tempfile
-import radardef
-import numpy as np
-import matplotlib.pyplot as plt
-import utils
-import numpy.typing as npt
+from pathlib import Path
 
+import matplotlib.pyplot as plt
+import numpy as np
+import numpy.typing as npt
+import utils
+
+import radardef
+from radardef.types import EiscatUHFLocation, TargetFormat
 
 # ## Prerequisites - download and convert data
 # ---
@@ -58,8 +60,8 @@ assert data_loader is not None, "No data loader compatible with the file"
 # ---
 # Here some datapoints are available and a example on how to read samples from the data.
 
-print(f"Metadata exp: {data_loader.meta.experiment}")
-print(f"Metadata bounds: {data_loader.meta.bounds}")
+print(f"Experiment definition: {data_loader.experiment}")
+print(f"Epoch bounds: {data_loader.epoch_bounds}")
 print(f"Available channels: {data_loader.channels}")
 channel = data_loader.channels[0]
 channel_bounds = data_loader.bounds(channel)
@@ -83,19 +85,19 @@ for chnl in data_loader.channels:
 # Extract receiver samples from each pulse,
 
 
-def rx_samples_per_pulse(data: npt.NDArray, meta: Metadata):
+def rx_samples_per_pulse(data: npt.NDArray, exp: ExpDef):
     """Extract rx samples from each pulse"""
-    pulses = int(len(summed_data) / meta.experiment.ipp_samps)
-    samples_per_pulse = summed_data.reshape(pulses, meta.experiment.ipp_samps)
-    rx_start_samp = meta.experiment.t_rx_start_usec / meta.experiment.t_samp_usec
-    rx_end_samp = meta.experiment.t_rx_end_usec / meta.experiment.t_samp_usec
+    pulses = int(len(summed_data) / exp.ipp_samps)
+    samples_per_pulse = summed_data.reshape(pulses, exp.ipp_samps)
+    rx_start_samp = exp.t_rx_start_usec / exp.t_samp_usec
+    rx_end_samp = exp.t_rx_end_usec / exp.t_samp_usec
     rx_samples_per_pulse = samples_per_pulse[:, int(rx_start_samp) - 1 : int(rx_end_samp) - 1]
     return rx_samples_per_pulse
 
 
 # $(\mathbf{A^T})^2$
 
-rti_data = np.abs(rx_samples_per_pulse(summed_data, data_loader.meta).T) ** 2
+rti_data = np.abs(rx_samples_per_pulse(summed_data, data_loader.experiment).T) ** 2
 
 # Plot measurement
 
@@ -108,13 +110,13 @@ ax.set_title(f"{raw_data.name} Range-Time-Intensity")
 # There is a sign of a object at the start of the measurement, to verify this this we can choose to only read
 # a certain amount of samples, lets say the first 500 ipps.
 
-summed_data = np.zeros((500 * data_loader.meta.experiment.ipp_samps,), dtype=np.complex128)
+summed_data = np.zeros((500 * data_loader.experiment.ipp_samps,), dtype=np.complex128)
 for chnl in data_loader.channels:
-    summed_data += data_loader.read(chnl, vector_length=500 * data_loader.meta.experiment.ipp_samps)
+    summed_data += data_loader.read(chnl, vector_length=500 * data_loader.experiment.ipp_samps)
 
 # $(\mathbf{A^T})^2$
 
-rti_data = np.abs(rx_samples_per_pulse(summed_data, data_loader.meta).T) ** 2
+rti_data = np.abs(rx_samples_per_pulse(summed_data, data_loader.experiment).T) ** 2
 
 # Plot measurement, here we can see a clear indication of a object.
 

@@ -11,4 +11,4 @@ from .formats import (
     StationID,
     TargetFormat,
 )
-from .types import BoundParams, ExpParams, Metadata, Pointing
+from .types import BoundParams, ExpDef, Pointing

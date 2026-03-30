@@ -1,36 +1,11 @@
-"""Enums and typed dicts to describe metadata, a standardized dict that each data loader should return"""
+"""General types"""
 
+from dataclasses import dataclass, field
 from typing import NamedTuple, Optional
 
 import numpy as np
 import numpy.typing as npt
-
-
-# TODO: SI units?
-class ExpParams(NamedTuple):
-    """
-    Experiment parameters
-    """
-
-    name: str = "Default"
-    radar_frequency: float = 0.0
-    t_ipp_usec: float = 0
-    ipp_samps: int = 0
-    sample_rate: float = 0.0
-    t_samp_usec: float = 0
-    rx_channels: list[str] | list[int] = []
-    t_rx_start_usec: float = 0.0
-    t_rx_end_usec: float = 0.0
-    t_tx_start_usec: float = 0.0
-    t_tx_end_usec: float = 0.0
-    wavelength: float = 0.0
-    tx_channel: Optional[str | int] = None
-    tx_pulse_length: Optional[int] = None
-    t_cal_on_usec: Optional[float] = None
-    t_cal_off_usec: Optional[float] = None
-    data: Optional[np.datetime64] = None
-    code: npt.NDArray[np.float64] = np.empty((10,), dtype=np.float64)
-    pulse: Optional[int] = None
+import scipy.constants
 
 
 class BoundParams(NamedTuple):
@@ -42,15 +17,6 @@ class BoundParams(NamedTuple):
     ts_end_usec: float | int = 0
 
 
-class Metadata(NamedTuple):
-    """
-    Metadata
-    """
-
-    experiment: ExpParams
-    bounds: BoundParams
-
-
 class Pointing(NamedTuple):
     """
     Pointing
@@ -58,3 +24,34 @@ class Pointing(NamedTuple):
 
     azimuth: float
     elevation: float
+
+
+@dataclass(frozen=True)
+class ExpDef:
+    """
+    Experiment defintion
+    """
+
+    name: str
+    radar_frequency: float
+    t_ipp_usec: int
+    t_samp_usec: int
+    t_rx_start_usec: int
+    t_rx_end_usec: int
+    t_tx_start_usec: int
+    t_tx_end_usec: int
+    baud_length_usec: int
+    samples_per_file: int
+    code: npt.NDArray[np.float64]
+    rx_channels: list[str] | list[int]
+    tx_channel: Optional[str | int] = None
+    t_cal_on_usec: Optional[float] = None
+    t_cal_off_usec: Optional[float] = None
+    ipp_samps: int = field(init=False)
+    sample_rate: float = field(init=False)
+    wavelength: float = field(init=False)
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "sample_rate", 1 / (self.t_samp_usec * 1e-6))
+        object.__setattr__(self, "wavelength", scipy.constants.c / (self.radar_frequency * 1e6))
+        object.__setattr__(self, "ipp_samps", int(self.t_ipp_usec / self.t_samp_usec))

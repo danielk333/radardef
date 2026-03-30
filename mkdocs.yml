@@ -88,7 +88,7 @@ nav:
   - Formats:
       - DRF: formats/format_drf.md
       - H5: formats/format_h5.md
-      - Metadata: formats/format_meta.md
+      - Experiment definition: formats/format_exp.md
   - Reference: reference/
   - Examples:
       - Radar station: examples/radar_station.py

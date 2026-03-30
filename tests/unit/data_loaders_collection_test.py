@@ -1,49 +1,42 @@
 import unittest
 from pathlib import Path
 
-import numpy as np
-from tests.unit import mocks
-
 from radardef.collections import DataLoaderCollection
-from radardef.types import BoundParams, ExpParams, Metadata, SourceFormat, TargetFormat
+from radardef.components import DataLoader
+from radardef.radar_stations.eiscat.experiments import leo_bpark_2_0, leo_mpark_2_1u
+from radardef.radar_stations.mu.experiments import mu_exp
+from radardef.types import TargetFormat
+from tests.unit import mocks
 
 
 class DataLoaderCollectionTest(unittest.TestCase):
-
     def test_load_data_mapping(self):
 
-        mui_h5_metadata = Metadata(
-            ExpParams(name="mui_h5"),
-            BoundParams(),
-        )
-        data_loader_mui_h5_mock = mocks.data_loader_mock(
-            converted_format=TargetFormat.H5,
-            meta=mui_h5_metadata,
-            validate_func=lambda src: True,
-            read_func=lambda src: np.empty(3),
-        )
-        mui_drf_metadata = Metadata(
-            ExpParams(name="mui_drf"),
-            BoundParams(),
-        )
-        data_loader_mui_drf_mock = mocks.data_loader_mock(
-            converted_format=TargetFormat.DRF,
-            meta=mui_drf_metadata,
-            validate_func=lambda src: False,
-            read_func=lambda src: np.empty(3),
-        )
-        mui_eiscat_metadata = Metadata(
-            ExpParams(name="eiscat_drf"),
-            BoundParams(),
-        )
-        data_loader_eiscat_drf_mock = mocks.data_loader_mock(
-            converted_format=TargetFormat.DRF,
-            meta=mui_eiscat_metadata,
-            validate_func=lambda src: False,
-            read_func=lambda src: np.empty(3),
-        )
+        class H5MuLoader(DataLoader):
+            converted_format = TargetFormat.H5
+            validator = mocks.validator_mock(TargetFormat.H5, lambda src: True)
 
-        data_loader_mocks = [data_loader_mui_h5_mock, data_loader_mui_drf_mock, data_loader_eiscat_drf_mock]
+            @property
+            def experiment(self):
+                return mu_exp
+
+        class DrfBParkLoader(DataLoader):
+            converted_format = TargetFormat.DRF
+            validator = mocks.validator_mock(TargetFormat.DRF, lambda src: False)
+
+            @property
+            def experiment(self):
+                return leo_bpark_2_0
+
+        class DrfMParkLoader(DataLoader):
+            converted_format = TargetFormat.DRF
+            validator = mocks.validator_mock(TargetFormat.DRF, lambda src: False)
+
+            @property
+            def experiment(self):
+                return leo_mpark_2_1u
+
+        data_loader_mocks = [H5MuLoader, DrfBParkLoader, DrfMParkLoader]
 
         radar_mock = mocks.radar_mock(data_loaders=data_loader_mocks)
 
@@ -53,44 +46,35 @@ class DataLoaderCollectionTest(unittest.TestCase):
 
         assert loader is not None
 
-        metadata = loader.meta
-
-        self.assertEqual(metadata.experiment.name, "mui_h5")
+        self.assertEqual(loader.experiment.name, mu_exp.name)
 
     def test_get_load_format(self):
 
-        mui_h5_metadata = Metadata(
-            ExpParams(name="mui_h5"),
-            BoundParams(),
-        )
-        data_loader_mui_h5_mock = mocks.data_loader_mock(
-            converted_format=TargetFormat.H5,
-            meta=mui_h5_metadata,
-            validate_func=lambda src: False,
-            read_func=lambda src: np.empty(3),
-        )
-        mui_drf_metadata = Metadata(
-            ExpParams(name="mui_drf"),
-            BoundParams(),
-        )
-        data_loader_mui_drf_mock = mocks.data_loader_mock(
-            converted_format=TargetFormat.DRF,
-            meta=mui_drf_metadata,
-            validate_func=lambda src: False,
-            read_func=lambda src: np.empty(3),
-        )
-        mui_eiscat_metadata = Metadata(
-            ExpParams(name="eiscat_drf"),
-            BoundParams(),
-        )
-        data_loader_eiscat_drf_mock = mocks.data_loader_mock(
-            converted_format=TargetFormat.DRF,
-            meta=mui_eiscat_metadata,
-            validate_func=lambda src: True,
-            read_func=lambda src: np.empty(3),
-        )
+        class H5MuLoader(DataLoader):
+            converted_format = TargetFormat.H5
+            validator = mocks.validator_mock(TargetFormat.H5, lambda src: False)
 
-        data_loader_mocks = [data_loader_mui_h5_mock, data_loader_mui_drf_mock, data_loader_eiscat_drf_mock]
+            @property
+            def experiment(self):
+                return mu_exp
+
+        class DrfBParkLoader(DataLoader):
+            converted_format = TargetFormat.DRF
+            validator = mocks.validator_mock(TargetFormat.DRF, lambda src: False)
+
+            @property
+            def experiment(self):
+                return leo_bpark_2_0
+
+        class DrfMParkLoader(DataLoader):
+            converted_format = TargetFormat.DRF
+            validator = mocks.validator_mock(TargetFormat.DRF, lambda src: True)
+
+            @property
+            def experiment(self):
+                return leo_mpark_2_1u
+
+        data_loader_mocks = [H5MuLoader, DrfBParkLoader, DrfMParkLoader]
 
         radar_mock = mocks.radar_mock(data_loaders=data_loader_mocks)
 

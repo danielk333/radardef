@@ -10,17 +10,15 @@ from typing import Optional
 import digital_rf
 import numpy as np
 import numpy.typing as npt
-import scipy.constants
 
 from radardef.components.data_loader_template import DataLoader
-from radardef.radar_stations.eiscat.utils import load_radar_code
+from radardef.radar_stations.eiscat.experiments import get_experiment
 from radardef.radar_stations.eiscat.validators import DRF
 from radardef.types import (
     Boundparam,
     BoundParams,
+    ExpDef,
     Expparam,
-    ExpParams,
-    Metadata,
     Metaparam,
     Pointing,
     TargetFormat,
@@ -30,54 +28,21 @@ from radardef.types import (
 class DrfLoader(DataLoader):
     """Simplifies the way to load DRF files converted from eiscat"""
 
+    converted_format = TargetFormat.DRF
+    validator = DRF()
+
     @property
-    def meta(self) -> Metadata:
-        """Metadata, containing experiment data and bounds data"""
-
-        # metadata file
-        meta_file = configparser.ConfigParser()
-        meta_file.read(self.__path / "metadata.ini")
-        sample_rate = meta_file.getfloat(Metaparam.EXPERIMENT, Expparam.SAMPLE_RATE)
-        t_samp_usec = int((1 / sample_rate) * 1e6)
-        t_ipp_usec = meta_file.getint(Metaparam.EXPERIMENT, Expparam.T_IPP_USEC)
-        ipp_samps = int(t_ipp_usec * 1e-6 * sample_rate)
-        code = load_radar_code("leo_bpark")  # TODO: Base this on some experiment param in the future
-
-        experiment = ExpParams(
-            name=meta_file.get(Metaparam.EXPERIMENT, Expparam.NAME).strip("'").strip('"'),
-            radar_frequency=meta_file.getfloat(Metaparam.EXPERIMENT, Expparam.RADAR_FREQUENCY),
-            t_ipp_usec=t_ipp_usec,
-            sample_rate=sample_rate,
-            ipp_samps=ipp_samps,
-            t_samp_usec=t_samp_usec,
-            rx_channels=eval(meta_file.get(Metaparam.EXPERIMENT, Expparam.RX_CHANNELS).strip("'").strip('"')),
-            tx_channel=meta_file.get(Metaparam.EXPERIMENT, Expparam.TX_CHANNEL).strip("'").strip('"'),
-            tx_pulse_length=int((meta_file.getfloat(Metaparam.EXPERIMENT, Expparam.TX_PULSE_LENGTH) + 1)),
-            t_rx_start_usec=meta_file.getfloat(Metaparam.EXPERIMENT, Expparam.T_RX_START_USEC),
-            t_rx_end_usec=meta_file.getfloat(Metaparam.EXPERIMENT, Expparam.T_RX_END_USEC),
-            t_tx_start_usec=meta_file.getfloat(Metaparam.EXPERIMENT, Expparam.T_TX_START_USEC),
-            t_tx_end_usec=(meta_file.getfloat(Metaparam.EXPERIMENT, Expparam.T_TX_END_USEC) + t_samp_usec),
-            t_cal_on_usec=meta_file.getfloat(Metaparam.EXPERIMENT, Expparam.T_CAL_ON_USEC),
-            t_cal_off_usec=meta_file.getfloat(Metaparam.EXPERIMENT, Expparam.T_CAL_OFF_USEC),
-            wavelength=scipy.constants.c
-            / (meta_file.getfloat(Metaparam.EXPERIMENT, Expparam.RADAR_FREQUENCY) * 1e6),
-            code=code,
-        )
-
-        bounds = BoundParams(
-            ts_start_usec=meta_file.getfloat(Metaparam.BOUNDS, Boundparam.TS_START_USEC),
-            ts_end_usec=meta_file.getfloat(Metaparam.BOUNDS, Boundparam.TS_END_USEC),
-        )
-
-        return Metadata(experiment, bounds)
+    def epoch_bounds(self) -> BoundParams:
+        """Get data epoch bounds"""
+        return self.__epoch_bounds
 
     @property
     def channels(self) -> list[int] | list[str]:
         """All available channels"""
         return self.__channel_reader.get_channels()
 
-    def __init__(self) -> None:
-        super().__init__(TargetFormat.DRF, DRF())
+    def __init__(self, exp: Optional[ExpDef] = None) -> None:
+        super().__init__(exp)
 
     def load(self, path: Path | str) -> None:
         """Loads a path to the dataloader, extracting metadata and other important specifications
@@ -95,6 +60,14 @@ class DrfLoader(DataLoader):
         if not self.__path.is_dir():
             raise Exception(f"<dir> must be directory path, {self.__path}")
 
+        if not self._experiment:
+            meta_file = configparser.ConfigParser()
+            meta_file.read(self.__path / "metadata.ini")
+            self._experiment = get_experiment(
+                group=meta_file.get(Metaparam.EXPERIMENT, Expparam.NAME),
+                version=meta_file.get(Metaparam.EXPERIMENT, Expparam.VERSION),
+            )
+
         self.__channel_reader = digital_rf.DigitalRFReader(str(self.__path))
 
         pointing_dir = self.__path / "pointing"
@@ -104,6 +77,7 @@ class DrfLoader(DataLoader):
         self.__meta_reader = digital_rf.DigitalMetadataReader(str(pointing_dir))
         idx_start, idx_end = self.__meta_reader.get_bounds()
         self._pointing_inds = list(self.__meta_reader.read(idx_start, idx_end).keys())
+        self.__epoch_bounds = self._extract_bounds(self.__path)
 
     def bounds(self, channel: str | int) -> tuple[int, int]:
         """Sample bounds of the specific channel
@@ -171,3 +145,14 @@ class DrfLoader(DataLoader):
 
             data = self.__meta_reader.read(self._pointing_inds[0])[self._pointing_inds[0]]
             return Pointing(data["azimuth"], data["elevation"])
+
+    def _extract_bounds(self, path: Path) -> BoundParams:
+        meta_file = configparser.ConfigParser()
+        meta_file.read(self.__path / "metadata.ini")
+
+        bounds = BoundParams(
+            ts_start_usec=meta_file.getfloat(Metaparam.BOUNDS, Boundparam.TS_START_USEC),
+            ts_end_usec=meta_file.getfloat(Metaparam.BOUNDS, Boundparam.TS_END_USEC),
+        )
+
+        return bounds

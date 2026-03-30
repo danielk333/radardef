@@ -12,11 +12,11 @@ from typing import Optional
 import h5py
 import numpy as np
 import numpy.typing as npt
-import scipy.constants
 
 from radardef.components import DataLoader
+from radardef.radar_stations.mu.experiments import mu_exp
 from radardef.radar_stations.mu.validators import H5
-from radardef.types import BoundParams, ExpParams, Metadata, Pointing, TargetFormat
+from radardef.types import BoundParams, ExpDef, Pointing, TargetFormat
 
 
 class H5Loader(DataLoader):
@@ -24,34 +24,25 @@ class H5Loader(DataLoader):
 
     __logger = logging.getLogger(__name__)
 
+    converted_format = TargetFormat.H5
+    validator = H5()
+
     @property
-    def meta(self) -> Metadata:
-        """Metadata, containing experiment data and bounds data"""
-        return self.__meta
+    def epoch_bounds(self) -> BoundParams:
+        """Data epoch bounds"""
+        return self.__epoch_bounds
 
     @property
     def channels(self) -> list[int] | list[str]:
         """All available channels"""
-        return self.meta.experiment.rx_channels
+        return self.experiment.rx_channels
 
-    def __init__(self) -> None:
-        super().__init__(TargetFormat.H5, H5())
-        self.__meta = Metadata(ExpParams(), BoundParams())
+    def __init__(self, exp: Optional[ExpDef] = None) -> None:
+        if not exp:
+            exp = mu_exp
+        super().__init__(exp)
+        self.__epoch_bounds = BoundParams()
         self.__sample_bounds: dict[str | int, tuple[int, int]] = {}
-        self.__t_ipp_usec = 3120
-        self.__t_rx_start_usec = 486
-        self.__t_samp_usec = 6
-        self.__sample_rate = 1 / (self.__t_samp_usec * 1e-6)
-        self.__radar_frequency = 46.5  # TODO: h5file.attrs["tx_frequency"] returns a 0 array
-        self._ipp_samps = int(self.__t_ipp_usec / self.__t_samp_usec)
-        self.__code = np.kron(
-            np.array(
-                [1, 1, 1, 1, 1, -1, -1, 1, 1, -1, 1, -1, 1],
-                dtype=np.float64,
-            ),
-            np.ones(2),
-        ).astype(np.float64)
-        self.__samples_per_file = 266240
 
     def load(self, path: Path | str) -> None:
         """Loads a path to the dataloader, extracting metadata and other important specifications
@@ -64,9 +55,15 @@ class H5Loader(DataLoader):
         self.__path = Path(path).resolve()
         if self.__path.is_dir():
             files = self._get_all_files_from_dir(self.__path)
-            self.__meta, self.__sample_bounds = self._extract_meta_from_list(files)
+            self.__epoch_bounds, self.__sample_bounds = self._extract_bounds_from_list(files)
         else:
-            self.__meta, self.__sample_bounds = self._extract_meta(self.__path)
+            self.__epoch_bounds, self.__sample_bounds = self._extract_bounds(self.__path)
+
+        if len(self.__sample_bounds) != len(self.experiment.rx_channels):
+            raise AttributeError(
+                f"Amount of channels in experiment definition: {len(self.experiment.rx_channels)} \
+                is not the same as the amount of channels in the data file: {len(self.__sample_bounds)}"
+            )
 
     def bounds(self, channel: str | int) -> tuple[int, int]:
         """Sample bounds of the specific channel
@@ -138,8 +135,8 @@ class H5Loader(DataLoader):
             files = self._get_all_files_from_dir(self.__path)
 
             if start_sample is not None:
-                start_file = math.floor(start_sample / self.__samples_per_file)
-                index = start_sample % self.__samples_per_file
+                start_file = math.floor(start_sample / self.experiment.samples_per_file)
+                index = start_sample % self.experiment.samples_per_file
             else:
                 start_file = 0
                 index = 0
@@ -147,7 +144,8 @@ class H5Loader(DataLoader):
 
             if vector_length is not None:
                 num_files = math.ceil(
-                    ((start_sample % self.__samples_per_file) + vector_length) / self.__samples_per_file
+                    ((start_sample % self.experiment.samples_per_file) + vector_length)
+                    / self.experiment.samples_per_file
                 )
                 samples = vector_length
             else:
@@ -196,12 +194,12 @@ class H5Loader(DataLoader):
         """
 
         pulses = len(data)
-        rx_start_samp = int(self.meta.experiment.t_rx_start_usec / self.meta.experiment.t_samp_usec)
+        rx_start_samp = int(self.experiment.t_rx_start_usec / self.experiment.t_samp_usec)
 
-        padded_data = np.zeros((self._ipp_samps * pulses), dtype=np.complex128)
+        padded_data = np.zeros((self.experiment.ipp_samps * pulses), dtype=np.complex128)
 
         for ipp_n, rx_batch in enumerate(data):
-            offset = int(ipp_n * self._ipp_samps) + rx_start_samp
+            offset = int(ipp_n * self.experiment.ipp_samps) + rx_start_samp
             padded_data[offset : offset + len(rx_batch)] = rx_batch
 
         return padded_data
@@ -236,51 +234,42 @@ class H5Loader(DataLoader):
             raise Exception(f"No valid h5 files at: {path}")
         return paths
 
-    def _extract_meta(self, path: Path) -> tuple[Metadata, dict[str | int, tuple[int, int]]]:
-        """Get metadata from h5 file"""
+    def _extract_bounds(self, path: Path) -> tuple[BoundParams, dict[str | int, tuple[int, int]]]:
+        """Get bounds from h5 file"""
 
         h5file = self._open_h5_file(path)
-
-        experiment = ExpParams(
-            name=h5file.attrs["filename"],
-            radar_frequency=self.__radar_frequency,
-            t_ipp_usec=self.__t_ipp_usec,
-            sample_rate=self.__sample_rate,
-            ipp_samps=self._ipp_samps,
-            t_samp_usec=self.__t_samp_usec,
-            t_rx_start_usec=self.__t_rx_start_usec,
-            t_rx_end_usec=self.__t_rx_start_usec + 6 * 85,
-            t_tx_start_usec=0,
-            t_tx_end_usec=26 * self.__t_samp_usec,  # code length * t_samp
-            rx_channels=h5file["rx_channels"][()],
-            pulse=2,
-            code=self.__code,
-            wavelength=scipy.constants.c / (self.__radar_frequency * 1e6),
-        )
-
         start_time = datetime.strptime(str(h5file.attrs["record_start_time"])[0:26], "%Y-%m-%dT%H:%M:%S.%f")
         end_time = datetime.strptime(str(h5file.attrs["record_end_time"])[0:26], "%Y-%m-%dT%H:%M:%S.%f")
         # time can be validated by end_time = start_time.timestamp() + (n_ipp * t_ipp_usec) * 1e-6, n_ipp = 512
         # if this is not matching maybe the measurement stopped  early
-        bounds = BoundParams(
+        epoch_bounds = BoundParams(
             ts_start_usec=int(start_time.timestamp() * 1e6),
             ts_end_usec=int(end_time.timestamp() * 1e6),
         )
 
         sample_bounds: dict[str | int, tuple[int, int]] = {}
-        for channel, data in enumerate(h5file["data"]):
-            pulses = len(data)
-            ipp_length = int(experiment.t_ipp_usec / experiment.t_samp_usec)
-            sample_bounds[channel + 1] = (0, pulses * ipp_length)
+        for j, data in enumerate(h5file["data"]):
+            channel = j + 1
+
+            if channel in self.experiment.rx_channels:
+                pulses = len(data)
+                ipp_length = int(self.experiment.t_ipp_usec / self.experiment.t_samp_usec)
+                sample_bounds[channel] = (0, pulses * ipp_length)
+            else:
+                self.__logger.debug(
+                    f"Channel: {j} is present in measurement file but not in experiment definition"
+                )
+
         h5file.close()
 
-        return Metadata(experiment, bounds), sample_bounds
+        return epoch_bounds, sample_bounds
 
-    def _extract_meta_from_list(self, paths: list[Path]) -> tuple[Metadata, dict[str | int, tuple[int, int]]]:
+    def _extract_bounds_from_list(
+        self, paths: list[Path]
+    ) -> tuple[BoundParams, dict[str | int, tuple[int, int]]]:
         """Concatenate metadata from several h5 file"""
 
         sample_bounds: dict[str | int, tuple[int, int]] = {}
-        experiment = ExpParams()
 
         # sort accoring to timestamp
         paths.sort()
@@ -292,34 +281,11 @@ class H5Loader(DataLoader):
 
             # Extract meta data, should be general for all files
             if i == 0:
-                experiment = ExpParams(
-                    name=h5file.attrs["filename"],
-                    radar_frequency=self.__radar_frequency,
-                    t_ipp_usec=self.__t_ipp_usec,
-                    sample_rate=self.__sample_rate,
-                    ipp_samps=self._ipp_samps,
-                    t_samp_usec=self.__t_samp_usec,
-                    t_rx_start_usec=self.__t_rx_start_usec,
-                    t_rx_end_usec=self.__t_rx_start_usec + 6 * 85,
-                    t_tx_start_usec=0,
-                    t_tx_end_usec=27 * self.__t_samp_usec,  # (code length + 1) * t_samp,
-                    rx_channels=h5file["rx_channels"][()],
-                    pulse=2,
-                    code=np.kron(
-                        np.array(
-                            [1, 1, 1, 1, 1, -1, -1, 1, 1, -1, 1, -1, 1],
-                            dtype=np.float64,
-                        ),
-                        np.ones(2, dtype=np.float64),
-                    ).astype(np.float64),
-                    wavelength=scipy.constants.c / (self.__radar_frequency * 1e6),
-                )
-
                 start_time = datetime.strptime(
                     str(h5file.attrs["record_start_time"])[0:26], "%Y-%m-%dT%H:%M:%S.%f"
                 )
             # Store end point of the directory
-            elif i == (len(paths) - 1):
+            if i == (len(paths) - 1):
                 end_time = datetime.strptime(
                     str(h5file.attrs["record_end_time"])[0:26], "%Y-%m-%dT%H:%M:%S.%f"
                 )
@@ -335,25 +301,28 @@ class H5Loader(DataLoader):
             previous_end_point = str(h5file.attrs["record_end_time"])[0:26]
 
             # Calculate channel sample bounds
-            ipp_length = int(experiment.t_ipp_usec / experiment.t_samp_usec)
+            ipp_length = int(self.experiment.t_ipp_usec / self.experiment.t_samp_usec)
             for j, data in enumerate(h5file["data"]):
                 channel = j + 1
-                if channel in experiment.rx_channels:
+                if channel in self.experiment.rx_channels:
                     min_max = (0, len(data) * ipp_length)
                     if channel not in sample_bounds:
                         sample_bounds[channel] = min_max
                     else:
                         sample_bounds[channel] = tuple(np.add(sample_bounds[channel], min_max))
-
+                else:
+                    self.__logger.debug(
+                        f"Channel: {j} is present in measurement file but not in experiment definition"
+                    )
             h5file.close()
 
-        bounds = BoundParams(
+        epoch_bounds = BoundParams(
             ts_start_usec=int(start_time.timestamp() * 1e6),
             ts_end_usec=int(end_time.timestamp() * 1e6),
         )
 
-        return Metadata(experiment, bounds), sample_bounds
+        return epoch_bounds, sample_bounds
 
     def _is_channel_present(self, chnl: str | int) -> bool:
         """is channel present in the data"""
-        return chnl in self.meta.experiment.rx_channels
+        return chnl in self.experiment.rx_channels

@@ -8,7 +8,7 @@ import numpy as np
 import numpy.typing as npt
 
 from radardef.components import Validator
-from radardef.types import Metadata, Pointing, TargetFormat
+from radardef.types import BoundParams, ExpDef, Pointing, TargetFormat
 
 
 class DataLoader:
@@ -16,20 +16,25 @@ class DataLoader:
     Data loader template, should be inherited by all data loaders
 
     Args:
-        converted_format: Format of the converted data
-        validator: validator for the converted format to see that a file is compatible
+        experiment: Experiment definition to be able to decode the data
+
 
     """
 
+    converted_format: TargetFormat
+    validator: Validator[TargetFormat]
+
     @property
-    def converted_format(self) -> TargetFormat:
-        """Converted format of the data compatible with the data loader"""
-        return self.__converted_format
+    def experiment(self) -> ExpDef:
+        """Experiment specifications"""
+        if not self._experiment:
+            raise ValueError("Experiment needs to be defined to be able to load data")
+        return self._experiment
 
     @property
     @abstractmethod
-    def meta(self) -> Metadata:
-        """Metadata, containing experiment data and bounds data"""
+    def epoch_bounds(self) -> BoundParams:
+        """Data epoch bounds"""
         pass
 
     @property
@@ -38,18 +43,21 @@ class DataLoader:
         """All available channels"""
         pass
 
-    def __init__(self, converted_format: TargetFormat, validator: Validator[TargetFormat]):
-        self.__converted_format = converted_format
-        self.__validator = validator
+    def __init__(
+        self,
+        experiment: Optional[ExpDef] = None,
+    ):
+        self._experiment = experiment
 
     @abstractmethod
     def load(self, path: Path | str) -> None:
         """Loads a path to the dataloader, extracting metadata and other important specifications"""
         pass
 
-    def validate(self, path: Path) -> bool:
+    @classmethod
+    def validate(cls, path: Path) -> bool:
         """Validate that the file format compatible with the loader"""
-        return self.__validator.validate(path)
+        return cls.validator.validate(path)
 
     @abstractmethod
     def bounds(self, channel: str | int) -> tuple[int, int]:

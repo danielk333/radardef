@@ -3,13 +3,13 @@ DataLoaderCollection gathers all given radars and extracts their data loaders, t
 load data from any file given a compatible data loader is available.
 """
 
-import copy
 import logging
 from pathlib import Path
+from typing import Optional
 
 from radardef.components.data_loader_template import DataLoader
 from radardef.components.radar_station_template import RadarStation
-from radardef.types import TargetFormat
+from radardef.types import ExpDef, TargetFormat
 
 
 class DataLoaderCollection:
@@ -25,7 +25,7 @@ class DataLoaderCollection:
     __logger = logging.getLogger(__name__)
 
     def __init__(self, radars: list[RadarStation]):
-        self.__data_loaders: dict[TargetFormat, DataLoader] = dict()
+        self.__data_loaders: dict[TargetFormat, type[DataLoader]] = dict()
 
         for radar in radars:
             for data_loader in radar.get_data_loaders():
@@ -35,6 +35,7 @@ class DataLoaderCollection:
         self,
         path: Path,
         converted_format: TargetFormat = TargetFormat.UNKNOWN,
+        experiment: Optional[ExpDef] = None,
     ) -> DataLoader | None:
         """
         Get a dataloader compatible with the file at the path.
@@ -48,11 +49,10 @@ class DataLoaderCollection:
             A compatible dataloader if available, otherwise None
 
         """
-
         if converted_format is TargetFormat.UNKNOWN:
             converted_format = self._get_load_format(path)
         try:
-            loader = copy.deepcopy(self.__data_loaders[converted_format])
+            loader = self.__data_loaders[converted_format](experiment)
             loader.load(path)
             return loader
         except KeyError:
@@ -71,6 +71,6 @@ class DataLoaderCollection:
         self.__logger.warning("Could not find any matching validator for the given format")
         return TargetFormat.UNKNOWN
 
-    def _register_data_loader(self, data_loader: DataLoader) -> None:
+    def _register_data_loader(self, data_loader: type[DataLoader]) -> None:
         """Register a data loader to the collection."""
         self.__data_loaders[data_loader.converted_format] = data_loader

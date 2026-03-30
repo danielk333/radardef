@@ -1,5 +1,6 @@
 import logging
 from pathlib import Path
+from typing import Optional
 
 from radardef.collections import (
     ConverterCollection,
@@ -8,7 +9,14 @@ from radardef.collections import (
 )
 from radardef.components import DataLoader, RadarStation
 from radardef.radar_stations import ESR, TSDR, Eiscat3D, EiscatUHF, EiscatVHF, Mu, Pansy
-from radardef.types import DishDiameter, Eiscat3DLocation, EiscatUHFLocation, SourceFormat, TargetFormat
+from radardef.types import (
+    DishDiameter,
+    Eiscat3DLocation,
+    EiscatUHFLocation,
+    ExpDef,
+    SourceFormat,
+    TargetFormat,
+)
 
 
 class RadarDef:
@@ -133,8 +141,7 @@ class RadarDef:
         except ValueError:
             self.__logger.error("Input path/paths is not a valid file/directory")
             return None
-
-        return self.__converter_collection.convert(
+        return self.converter_collection.convert(
             paths,
             source_formats,
             self._validate_target_format(target_format),
@@ -145,6 +152,7 @@ class RadarDef:
         self,
         path: Path | str,
         converted_format: TargetFormat = TargetFormat.UNKNOWN,
+        experiment: Optional[ExpDef] = None,
     ) -> DataLoader | None:
         """
         Load data from a converted file
@@ -157,9 +165,8 @@ class RadarDef:
             DataLoader
         """
 
-        return self.__data_loader.load_data(
-            Path(path).resolve(),
-            self._validate_target_format(converted_format),
+        return self.data_loader_collection.load_data(
+            Path(path).resolve(), self._validate_target_format(converted_format), experiment
         )
 
     def _validate_source_format(self, source_format: SourceFormat) -> SourceFormat:
