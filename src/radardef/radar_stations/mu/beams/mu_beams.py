@@ -9,38 +9,31 @@ import scipy.interpolate
 from pyant.models import Array, ArrayParams, InterpolatedArray, InterpolatedArrayParams
 from spacecoords.spherical import cart_to_sph
 
-from radardef.radar_stations.mu.beams.data import DATA_PATHS
+from radardef.radar_stations.mu.beams.data import get_antenna_pos, get_yagi_specs
 from radardef.tools.types import CarthesianCoordinates_3xN, NDArray_2, NDArray_2xN
+
+YAGI_AZ, YAGI_EL, YAGI_GAIN_DB = get_yagi_specs()
+ANTENNA_POS = get_antenna_pos()
+
+
+def yagi(cart_coord: CarthesianCoordinates_3xN, polarization: NDArray_2) -> NDArray_2xN:
+
+    interp = scipy.interpolate.RegularGridInterpolator(
+        (YAGI_AZ[0, :], YAGI_EL[:, 0]),
+        YAGI_GAIN_DB.T,
+        bounds_error=False,
+    )
+
+    sph = cart_to_sph(cart_coord, degrees=True)
+    G = 10 ** (interp(sph[:2, :].T) / 10.0)
+    return np.stack([G, G], axis=0)
 
 
 def mu_array_beam() -> tuple[Array, ArrayParams]:
     """A MU array beam"""
 
-    assert "MU_antenna_pos.npy" in DATA_PATHS, "pos file missing!"
-    _mu_antennas = np.load(DATA_PATHS["MU_antenna_pos.npy"])
-
-    assert "mu_yagi_gain.npz" in DATA_PATHS, "gain file missing!"
-    _mu_yagi = np.load(DATA_PATHS["mu_yagi_gain.npz"])
-
-    az = _mu_yagi["az_deg"].reshape(-1, 721)
-    az -= 180
-    el = _mu_yagi["el_deg"].reshape(-1, 721)
-    gain_dB = _mu_yagi["gain_dB"].reshape(-1, 721)
-    gain_dB = gain_dB - np.max(_mu_yagi["gain_dB"])
-
-    interp = scipy.interpolate.RegularGridInterpolator(
-        (az[0, :], el[:, 0]),
-        gain_dB.T,
-        bounds_error=False,
-    )
-
-    def yagi(cart_coord: CarthesianCoordinates_3xN, polarization: NDArray_2) -> NDArray_2xN:
-        sph = cart_to_sph(cart_coord, degrees=True)
-        G = 10 ** (interp(sph[:2, :].T) / 10.0)
-        return np.stack([G, G], axis=0)
-
     beam = Array(
-        antennas=_mu_antennas,
+        antennas=ANTENNA_POS,
         antenna_element=yagi,
     )
     params = ArrayParams(
