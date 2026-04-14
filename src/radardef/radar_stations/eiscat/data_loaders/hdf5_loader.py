@@ -72,7 +72,7 @@ class HDF5Loader(DataLoader):
 
     @property
     def epoch_bounds(self) -> BoundParams:
-        """Data epoch bounds"""
+        """Data epoch bounds in microseconds"""
         return self.__epoch_bounds
 
     @property
@@ -80,29 +80,23 @@ class HDF5Loader(DataLoader):
         """All available channels"""
         return self.experiment.rx_channels
 
-    def __init__(self, exp: Optional[ExpDef] = None) -> None:
-        super().__init__(exp)
-        self.__epoch_bounds = BoundParams()
-
-    def load(self, path: Path | str) -> None:
-        """
-        Loads a path to the dataloader, extracting metadata and other important specifications
-
-        Args:
-            path: path to data file
-        """
-        self.__path = Path(path).resolve()
+    def __init__(
+        self,
+        path: Path | str,
+        exp_def: Optional[ExpDef] = None,
+    ) -> None:
+        super().__init__(path, exp_def)
         if not self._experiment:
-            file = self._open_hdf5_file(self.__path)
+            file = self._open_hdf5_file(self.path)
             name = file[self.PORTALDBREFERENCE][self.EXPERIMENTNAME][()][0].decode()
             file.close
 
             expname, expvers, owner = self._expinfo_split(name)
-            self.__experiment = get_experiment(group=expname, version=expvers)
+            self._experiment = get_experiment(group=expname, version=expvers)
 
-        self.__dumps, self.__samples_per_dump = self._get_data_size(self.__path)
-        self.__epoch_bounds = self._extract_bounds(self.__path)
-        self.__pointing = self._extract_pointing(self.__path)
+        self.__dumps, self.__samples_per_dump = self._get_data_size(self.path)
+        self.__epoch_bounds = self._extract_bounds(self.path)
+        self.__pointing = self._extract_pointing(self.path)
 
     def bounds(self, channel: str | int) -> tuple[int, int]:
         """Sample bounds of the specific channel
@@ -159,7 +153,7 @@ class HDF5Loader(DataLoader):
         sample_index = start_sample % self.__samples_per_dump
         windows = -((sample_index + vector_length) // -self.__samples_per_dump)
 
-        file = self._open_hdf5_file(self.__path)
+        file = self._open_hdf5_file(self.path)
 
         # Concatenate the dump windows
         raw_data = file[self.DATA][self.DATA_LEVEL][dump_index : dump_index + windows].reshape(2, -1)
@@ -203,7 +197,11 @@ class HDF5Loader(DataLoader):
             self.experiment.radar_frequency
             != file[self.DATA]["ParBlock"]["ParBlock"][0][self.PARBLOCK_FREQUENCY]
         ):
-            raise ValueError("Radar frequency does not match with frequency in measurement file")
+            self.__logger.debug(
+                f"Radar frequency in experiment does not match with frequency in measurement file.\
+                exp def: {self.experiment.radar_frequency} \
+                measurement file: {file[self.DATA]['ParBlock']['ParBlock'][0][self.PARBLOCK_FREQUENCY]}"
+            )
         if self.experiment.rx_channels[0] != file[self.PORTALDBREFERENCE][self.DATASTREAM][0].decode():
             raise ValueError("Rx channel does not match with channel in measurement file")
 

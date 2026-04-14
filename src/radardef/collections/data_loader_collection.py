@@ -52,9 +52,7 @@ class DataLoaderCollection:
         if converted_format is TargetFormat.UNKNOWN:
             converted_format = self._get_load_format(path)
         try:
-            loader = self.__data_loaders[converted_format](experiment)
-            loader.load(path)
-            return loader
+            return self.__data_loaders[converted_format](path, experiment)
         except KeyError:
             self.__logger.info(
                 f"No dataloader available for format: {converted_format}, files affected: {path}"

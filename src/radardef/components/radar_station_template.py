@@ -242,16 +242,12 @@ class RadarStation:
         if converted_format is None:
             for data_loader in self.__data_loaders.values():
                 if data_loader.validate(path):
-                    loader = data_loader(experiment)
-                    loader.load(path)
-                    return loader
+                    return data_loader(path, experiment)
             self.__logger.error("Source format not supported")
         else:
             try:
                 if self.__data_loaders[converted_format].validate(path):
-                    loader = self.__data_loaders[converted_format](experiment)
-                    loader.load(path)
-                    return loader
+                    return self.__data_loaders[converted_format](path, experiment)
                 else:
                     self.__logger.error("Source format not supported")
             except KeyError:

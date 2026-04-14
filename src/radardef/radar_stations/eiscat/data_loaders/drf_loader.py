@@ -33,7 +33,7 @@ class DrfLoader(DataLoader):
 
     @property
     def epoch_bounds(self) -> BoundParams:
-        """Get data epoch bounds"""
+        """Data epoch bounds in microseconds"""
         return self.__epoch_bounds
 
     @property
@@ -41,43 +41,34 @@ class DrfLoader(DataLoader):
         """All available channels"""
         return self.__channel_reader.get_channels()
 
-    def __init__(self, exp: Optional[ExpDef] = None) -> None:
-        super().__init__(exp)
+    def __init__(
+        self,
+        path: Path | str,
+        exp_def: Optional[ExpDef] = None,
+    ) -> None:
+        super().__init__(path, exp_def)
 
-    def load(self, path: Path | str) -> None:
-        """Loads a path to the dataloader, extracting metadata and other important specifications
-
-        Args:
-            path: path to data file
-
-        Raises:
-            Exception: path is not a directory
-            Exception: pointing dir must be a directory
-        """
-
-        self.__path = Path(path).resolve()
-
-        if not self.__path.is_dir():
-            raise Exception(f"<dir> must be directory path, {self.__path}")
+        if not self.path.is_dir():
+            raise Exception(f"<dir> must be directory path, {self.path}")
 
         if not self._experiment:
             meta_file = configparser.ConfigParser()
-            meta_file.read(self.__path / "metadata.ini")
+            meta_file.read(self.path / "metadata.ini")
             self._experiment = get_experiment(
                 group=meta_file.get(Metaparam.EXPERIMENT, Expparam.NAME),
                 version=meta_file.get(Metaparam.EXPERIMENT, Expparam.VERSION),
             )
 
-        self.__channel_reader = digital_rf.DigitalRFReader(str(self.__path))
+        self.__channel_reader = digital_rf.DigitalRFReader(str(self.path))
 
-        pointing_dir = self.__path / "pointing"
+        pointing_dir = self.path / "pointing"
         if not pointing_dir.is_dir():
-            raise Exception(f"<dir/pointing> must be directory path, {self.__path}")
+            raise Exception(f"<dir/pointing> must be directory path, {self.path}")
 
         self.__meta_reader = digital_rf.DigitalMetadataReader(str(pointing_dir))
         idx_start, idx_end = self.__meta_reader.get_bounds()
         self._pointing_inds = list(self.__meta_reader.read(idx_start, idx_end).keys())
-        self.__epoch_bounds = self._extract_bounds(self.__path)
+        self.__epoch_bounds = self._extract_bounds(self.path)
 
     def bounds(self, channel: str | int) -> tuple[int, int]:
         """Sample bounds of the specific channel
@@ -148,7 +139,7 @@ class DrfLoader(DataLoader):
 
     def _extract_bounds(self, path: Path) -> BoundParams:
         meta_file = configparser.ConfigParser()
-        meta_file.read(self.__path / "metadata.ini")
+        meta_file.read(self.path / "metadata.ini")
 
         bounds = BoundParams(
             ts_start_usec=meta_file.getfloat(Metaparam.BOUNDS, Boundparam.TS_START_USEC),

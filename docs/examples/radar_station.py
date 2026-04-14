@@ -9,8 +9,9 @@
 # radar stations, the available radars can be seen as:
 
 import random
-from radardef import RadarDef, radar_stations, RadarStation
-from radardef.types import EiscatUHFLocation, BeamType
+
+from radardef import RadarDef, RadarStation, radar_stations
+from radardef.types import BeamType, EiscatUHFLocation
 
 radar_def = RadarDef()
 available_stations = radar_def.radar_stations
@@ -57,6 +58,7 @@ for station in stations:
 # it has the same data components as some eiscat stations, Ta-da a new radar stations is in place.
 
 from pyant.models import Isotropic, IsotropicParams
+
 from radardef.radar_stations.eiscat.converters import EiscatMatbzToDrf
 from radardef.radar_stations.eiscat.data_loaders import DrfLoader
 from radardef.radar_stations.eiscat.validators import EiscatMatlab
@@ -72,7 +74,7 @@ orodruin = RadarStation(
     beam_parameters=IsotropicParams(),
     converters=[EiscatMatbzToDrf()],
     validator=EiscatMatlab(),
-    data_loaders=[DrfLoader()],
+    data_loaders=[DrfLoader],
 )
 
 # The station can then be added with the rest of the collection if wanted

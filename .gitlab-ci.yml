@@ -57,7 +57,7 @@ mypy:
   allow_failure: false
   script:
     - pip install .[type_checker]
-    - mypy src/radardef --follow-untyped-imports --disallow-untyped-defs --warn-unused-ignores
+    - mypy
   rules:
     - !reference [.merge_request_rules, rules]
 

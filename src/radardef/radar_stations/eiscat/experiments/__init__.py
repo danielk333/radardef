@@ -115,5 +115,4 @@ def get_experiment(group: ExpGroup | str, version: ExpVer | str) -> ExpDef:
     try:
         return EISCAT_EXPERIMENTS[ExpGroup(group)][ExpVer(version)]
     except KeyError:
-        breakpoint()
         raise ValueError(f"No experiment with name: {group} and version: {version} available")

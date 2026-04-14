@@ -29,7 +29,7 @@ class H5Loader(DataLoader):
 
     @property
     def epoch_bounds(self) -> BoundParams:
-        """Data epoch bounds"""
+        """Data epoch bounds in microseconds"""
         return self.__epoch_bounds
 
     @property
@@ -37,14 +37,11 @@ class H5Loader(DataLoader):
         """All available channels"""
         return self.experiment.rx_channels
 
-    def __init__(self, exp: Optional[ExpDef] = None) -> None:
-        if not exp:
-            exp = mu_exp
-        super().__init__(exp)
-        self.__epoch_bounds = BoundParams()
-        self.__sample_bounds: dict[str | int, tuple[int, int]] = {}
-
-    def load(self, path: Path | str) -> None:
+    def __init__(
+        self,
+        path: Path | str,
+        exp_def: Optional[ExpDef] = None,
+    ) -> None:
         """Loads a path to the dataloader, extracting metadata and other important specifications
 
         Args:
@@ -52,12 +49,16 @@ class H5Loader(DataLoader):
 
         """
 
-        self.__path = Path(path).resolve()
-        if self.__path.is_dir():
-            files = self._get_all_files_from_dir(self.__path)
+        if not exp_def:
+            exp_def = mu_exp
+
+        super().__init__(path, exp_def)
+
+        if self.path.is_dir():
+            files = self._get_all_files_from_dir(self.path)
             self.__epoch_bounds, self.__sample_bounds = self._extract_bounds_from_list(files)
         else:
-            self.__epoch_bounds, self.__sample_bounds = self._extract_bounds(self.__path)
+            self.__epoch_bounds, self.__sample_bounds = self._extract_bounds(self.path)
 
         if len(self.__sample_bounds) != len(self.experiment.rx_channels):
             raise AttributeError(
@@ -131,8 +132,8 @@ class H5Loader(DataLoader):
         if not self._is_channel_present(channel):
             raise Exception(f"channel {channel} is missing in {dir}")
 
-        if self.__path.is_dir():
-            files = self._get_all_files_from_dir(self.__path)
+        if self.path.is_dir():
+            files = self._get_all_files_from_dir(self.path)
 
             if start_sample is not None:
                 start_file = math.floor(start_sample / self.experiment.samples_per_file)
@@ -165,7 +166,7 @@ class H5Loader(DataLoader):
 
             return padded_data[index : index + samples]
         else:
-            h5file = self._open_h5_file(self.__path)
+            h5file = self._open_h5_file(self.path)
             data = h5file["data"][channel - 1]
             h5file.close()
 

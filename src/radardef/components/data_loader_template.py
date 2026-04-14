@@ -32,9 +32,14 @@ class DataLoader:
         return self._experiment
 
     @property
+    def path(self) -> Path:
+        """Data path"""
+        return self._path
+
+    @property
     @abstractmethod
     def epoch_bounds(self) -> BoundParams:
-        """Data epoch bounds"""
+        """Data epoch bounds in microseconds"""
         pass
 
     @property
@@ -45,14 +50,11 @@ class DataLoader:
 
     def __init__(
         self,
-        experiment: Optional[ExpDef] = None,
+        path: Path | str,
+        exp_def: Optional[ExpDef] = None,
     ):
-        self._experiment = experiment
-
-    @abstractmethod
-    def load(self, path: Path | str) -> None:
-        """Loads a path to the dataloader, extracting metadata and other important specifications"""
-        pass
+        self._experiment = exp_def
+        self._path = Path(path)
 
     @classmethod
     def validate(cls, path: Path) -> bool:
