@@ -55,9 +55,10 @@ class H5Loader(DataLoader):
         super().__init__(path, exp_def)
 
         if self.path.is_dir():
-            files = self._get_all_files_from_dir(self.path)
-            self.__epoch_bounds, self.__sample_bounds = self._extract_bounds_from_list(files)
+            self.files = self._get_all_files_from_dir(self.path)
+            self.__epoch_bounds, self.__sample_bounds = self._extract_bounds_from_list(self.files)
         else:
+            self.files = [self.path]
             self.__epoch_bounds, self.__sample_bounds = self._extract_bounds(self.path)
 
         if len(self.__sample_bounds) != len(self.experiment.rx_channels):
@@ -133,8 +134,6 @@ class H5Loader(DataLoader):
             raise Exception(f"channel {channel} is missing in {dir}")
 
         if self.path.is_dir():
-            files = self._get_all_files_from_dir(self.path)
-
             if start_sample is not None:
                 start_file = math.floor(start_sample / self.experiment.samples_per_file)
                 index = start_sample % self.experiment.samples_per_file
@@ -150,10 +149,10 @@ class H5Loader(DataLoader):
                 )
                 samples = vector_length
             else:
-                num_files = len(files)
+                num_files = len(self.files)
                 samples = self.bounds(channel)[1]
 
-            files = files[start_file : start_file + num_files]
+            files = self.files[start_file : start_file + num_files]
             padded_data = np.empty((0,), dtype=np.complex128)
             for i, file in enumerate(files):
                 h5file = self._open_h5_file(file)
@@ -194,16 +193,14 @@ class H5Loader(DataLoader):
         ```
         """
 
-        pulses = len(data)
+        pulses = data.shape[0]
         rx_start_samp = int(self.experiment.t_rx_start_usec / self.experiment.t_samp_usec)
 
-        padded_data = np.zeros((self.experiment.ipp_samps * pulses), dtype=np.complex128)
+        padded_data = np.zeros((pulses, self.experiment.ipp_samps), dtype=np.complex128)
 
-        for ipp_n, rx_batch in enumerate(data):
-            offset = int(ipp_n * self.experiment.ipp_samps) + rx_start_samp
-            padded_data[offset : offset + len(rx_batch)] = rx_batch
+        padded_data[:, rx_start_samp : rx_start_samp + data.shape[1]] = data
 
-        return padded_data
+        return padded_data.reshape(-1)
 
     def _open_h5_file(self, path: Path) -> h5py.File:
         """Open h5 file and return reader"""
