@@ -118,7 +118,7 @@ class HDF5Loader(DataLoader):
 
     def read(
         self,
-        channel: str | int,
+        channel: Optional[str | int | list[str] | list[int]] = None,
         start_sample: Optional[int] = None,
         vector_length: Optional[int] = None,
     ) -> npt.NDArray[np.complex128]:
@@ -130,19 +130,20 @@ class HDF5Loader(DataLoader):
         ```
 
         Args:
-            channel: channel to read data from
+            channel (optional): Channel to read data from, single channel or list of channels. If not specified all channels will be returned.
             start_sample (optional): sample to start reading from, if not given bounds start will be used.
             vector_length (optional): Amount of samples to read from start_sample,
                                       if not given one batch will be read.
 
         Returns:
-            Complex data of given channel
+            Complex data from channel shape: (vector_length,)
         """
-        if not isinstance(channel, str):
-            channel = str(channel)
+        if channel:
+            if not isinstance(channel, str):
+                channel = str(channel)
 
-        if channel not in self.channels:
-            raise Exception(f"channel {channel} missing in {dir}")
+            if channel not in self.channels:
+                raise Exception(f"channel {channel} missing in {dir}")
 
         if start_sample is None:
             start_sample = 0

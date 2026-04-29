@@ -92,7 +92,7 @@ class DrfLoader(DataLoader):
 
     def read(
         self,
-        channel: str | int,
+        channel: Optional[str | int | list[str] | list[int]] = None,
         start_sample: Optional[int] = None,
         vector_length: Optional[int] = None,
     ) -> npt.NDArray[np.complex128]:
@@ -100,23 +100,25 @@ class DrfLoader(DataLoader):
         Read data from loaded file
 
         Args:
-            channel (optional): Channel to read data from
+            channel (optional): Channel to read data from, single channel or list of channels. If not specified all channels will be returned.
             start_sample (optional): Start of range to read, if empty all data will be read
             vector_length (optional): Number of samples (counting from start sample) to read,
                                     if empty all data will be read
 
         Returns:
-            Complex data of length vector_length from give channel
+            Complex data from channel shape: (vector_length,)
 
         Raises:
             Exception: channel is missing
         """
+        if channel:
+            if not isinstance(channel, str):
+                channel = str(channel)
 
-        if not isinstance(channel, str):
-            channel = str(channel)
-
-        if channel not in self.__channel_reader.get_channels():
-            raise Exception(f"channel {channel} missing in {dir}")
+            if channel not in self.__channel_reader.get_channels():
+                raise Exception(f"channel {channel} missing in {dir}")
+        else:
+            channel = self.experiment.rx_channels[0]
 
         if start_sample is None or vector_length is None:
             bound_start, bound_end = self.bounds(channel)

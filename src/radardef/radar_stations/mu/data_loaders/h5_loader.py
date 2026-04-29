@@ -88,7 +88,7 @@ class H5Loader(DataLoader):
 
     def read(
         self,
-        channel: str | int,
+        channel: Optional[str | int | list[int] | list[str]] = None,
         start_sample: Optional[int] = None,
         vector_length: Optional[int] = None,
     ) -> npt.NDArray[np.complex128]:
@@ -96,13 +96,13 @@ class H5Loader(DataLoader):
         Read data from loaded file
 
         Args:
-            channel (optional): Channel to read data from
+            channel (optional): Channel to read data from, single channel or list of channels. If not specified all channels will be returned.
             start_sample (optional): Start of range to read, if empty all data will be read
             vector_length (optional): Number of samples (counting from start sample) to read,
                                     if empty all data will be read
 
         Returns:
-            Complex data of length vector_length from give channel
+            Complex data from channel/channels. Shape for single channel: (vector_length,) otherwise: (channels, vector_length)
 
         Raises:
             Exception: channel is missing
@@ -127,11 +127,18 @@ class H5Loader(DataLoader):
             ```
         """
 
-        if not isinstance(channel, int):
-            channel = int(channel)
-
-        if not self._is_channel_present(channel):
-            raise Exception(f"channel {channel} is missing in {dir}")
+        chnl: int | npt.NDArray | None
+        if channel:
+            if isinstance(channel, str):
+                chnl = int(channel)
+            if isinstance(channel, list):
+                chnl = np.array(channel).astype(np.int64)
+            else:
+                chnl = int(channel)
+            if not self._is_channel_present(chnl):
+                raise Exception(f"Atleast one of the requested channels {chnl} is missing in {dir}")
+        else:
+            chnl = None
 
         if self.path.is_dir():
             if start_sample is not None:
@@ -150,23 +157,34 @@ class H5Loader(DataLoader):
                 samples = vector_length
             else:
                 num_files = len(self.files)
-                samples = self.bounds(channel)[1]
+                samples = self.bounds(self.experiment.rx_channels[0])[1]
 
             files = self.files[start_file : start_file + num_files]
             padded_data = np.empty((0,), dtype=np.complex128)
             for i, file in enumerate(files):
                 h5file = self._open_h5_file(file)
-                data = h5file["data"][channel - 1]
+                if chnl is not None:
+                    data = h5file["data"][chnl - 1]
+                else:
+                    data = h5file["data"][:]
+
                 h5file.close()
+
                 if i == 0:
                     padded_data = self._flatten_and_zero_pad(data)
                 else:
                     padded_data = np.concatenate((padded_data, self._flatten_and_zero_pad(data)), axis=0)
 
-            return padded_data[index : index + samples]
+            if padded_data.ndim >= 2:
+                return padded_data[:, index : index + samples]
+            else:
+                return padded_data[index : index + samples]
         else:
             h5file = self._open_h5_file(self.path)
-            data = h5file["data"][channel - 1]
+            if chnl is not None:
+                data = h5file["data"][chnl - 1]
+            else:
+                data = h5file["data"][:]
             h5file.close()
 
             # flatten and fill with zeroes
@@ -191,16 +209,26 @@ class H5Loader(DataLoader):
         ```
         | 81 zeros | 85 samples rx data | 354 zeros |
         ```
-        """
+        Args:
+            data: data of shape (channels, pulses, rx_samples) or (pulses,rx_samples)
 
-        pulses = data.shape[0]
+        """
+        pulses = data.shape[-2]
+        rx_samples = data.shape[-1]
         rx_start_samp = int(self.experiment.t_rx_start_usec / self.experiment.t_samp_usec)
 
-        padded_data = np.zeros((pulses, self.experiment.ipp_samps), dtype=np.complex128)
+        if data.ndim <= 2:
+            padded_data = np.zeros((pulses, self.experiment.ipp_samps), dtype=np.complex128)
 
-        padded_data[:, rx_start_samp : rx_start_samp + data.shape[1]] = data
+            padded_data[:, rx_start_samp : rx_start_samp + rx_samples] = data
 
-        return padded_data.reshape(-1)
+            return padded_data.reshape(-1)
+        else:
+            channels = data.shape[0]
+            padded_data = np.zeros((channels, pulses, self.experiment.ipp_samps), dtype=np.complex128)
+            padded_data[:, :, rx_start_samp : rx_start_samp + rx_samples] = data
+
+            return padded_data.reshape(channels, pulses * self.experiment.ipp_samps)
 
     def _open_h5_file(self, path: Path) -> h5py.File:
         """Open h5 file and return reader"""
@@ -321,6 +349,10 @@ class H5Loader(DataLoader):
 
         return epoch_bounds, sample_bounds
 
-    def _is_channel_present(self, chnl: str | int) -> bool:
+    def _is_channel_present(self, chnl: str | int | list[str] | list[int] | npt.NDArray[np.int64]) -> bool:
         """is channel present in the data"""
-        return chnl in self.experiment.rx_channels
+
+        if isinstance(chnl, list) or isinstance(chnl, np.ndarray):
+            return set(chnl).issubset(self.experiment.rx_channels)
+        else:
+            return chnl in self.experiment.rx_channels
