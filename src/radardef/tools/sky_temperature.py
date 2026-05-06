@@ -10,7 +10,12 @@ from radardef.components.radar_station_template import RadarStation
 
 
 def temperature_map(
-    radar: RadarStation, time: Time, res: int, flatten: bool = False
+    radar: RadarStation,
+    time: Time,
+    res: int,
+    flatten: bool = False,
+    gsm_map: npt.NDArray | None = None,
+    gsm_nside: int | None = None,
 ) -> tuple[npt.NDArray, npt.NDArray, npt.NDArray]:
     """Temperature map"""
     az_mat, el_mat = np.meshgrid(
@@ -21,9 +26,14 @@ def temperature_map(
     az_mat = az_mat.reshape((az_mat.size,))
     el_mat = el_mat.reshape((el_mat.size,))
 
-    gsm = GlobalSkyModel16(freq_unit="Hz", include_cmb=True)
-    mm = gsm.generate(radar.frequency)
-    hp_obj = HEALPix(nside=gsm.nside, order="RING", frame=Galactic)
+    if gsm_map is None:
+        gsm = GlobalSkyModel16(freq_unit="Hz", include_cmb=True)
+        gsm_map = gsm.generate(radar.frequency)
+        gsm_nside = gsm.nside
+    else:
+        assert gsm_nside is not None
+
+    hp_obj = HEALPix(nside=gsm_nside, order="RING", frame=Galactic)
     coords = AltAz(
         az=az_mat * u.rad,
         alt=el_mat * u.rad,
@@ -33,7 +43,7 @@ def temperature_map(
             lon=radar.lon * u.deg,
         ),
     )
-    temp_mat = hp_obj.interpolate_bilinear_skycoord(coords, mm)
+    temp_mat = hp_obj.interpolate_bilinear_skycoord(coords, gsm_map)
     if not flatten:
         az_mat = az_mat.reshape(shape)
         el_mat = el_mat.reshape(shape)
@@ -41,9 +51,22 @@ def temperature_map(
     return az_mat, el_mat, temp_mat
 
 
-def calculate_antenna_temperature(radar: RadarStation, time: Time, res: int) -> float:
+def calculate_antenna_temperature(
+    radar: RadarStation,
+    time: Time,
+    res: int,
+    gsm_map: npt.NDArray | None = None,
+    gsm_nside: int | None = None,
+) -> float:
     """Calculate antena temperature"""
-    az_mat, el_mat, temp_mat = temperature_map(radar, time, res, flatten=True)
+    az_mat, el_mat, temp_mat = temperature_map(
+        radar,
+        time,
+        res,
+        flatten=True,
+        gsm_map=gsm_map,
+        gsm_nside=gsm_nside,
+    )
     g_mat = radar.beam.sph_gain(
         azimuth=az_mat,
         elevation=el_mat,
@@ -54,7 +77,7 @@ def calculate_antenna_temperature(radar: RadarStation, time: Time, res: int) -> 
     d_el = np.pi / 2 / res
     d_S = np.cos(el_mat) * d_az * d_el
 
-    # ugly numerical integration
+    # ugly numerical integration - TODO: see if this can be done better?
     g_int = np.sum(g_mat * d_S)
     t_int = np.sum(temp_mat * g_mat * d_S)
 

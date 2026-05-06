@@ -2,13 +2,15 @@
 # ---
 # By using the specifications of the radar station one can using the sky temperature tools visualise the
 # sky temperatures
-
-from astropy.time import Time
+import time
+from astropy.time import Time, TimeDelta
 from pygdsm import GlobalSkyModel16, GSMObserver16
 import matplotlib.pyplot as plt
 import radardef.tools.sky_temperature as sky_temperature
 import radardef.radar_stations as radar_stations
 import spacecoords.projection as proj
+from tqdm import tqdm
+import numpy as np
 import pyant
 
 # ## Sky temperature map
@@ -50,7 +52,25 @@ pyant.plotting.gain_heatmap(
 # ## Calculate sky temperature
 # ---
 
-sky_ant_temperature = sky_temperature.calculate_antenna_temperature(radar, time, 300)
-print(f"{sky_ant_temperature=} K")
+dts = TimeDelta(np.linspace(0, 48 * 3600, 100), format="sec")
+gsm = GlobalSkyModel16(freq_unit="Hz", include_cmb=True)
+gsm_map = gsm.generate(radar.frequency)
+
+sky_ant_temperature = []
+for dt in tqdm(dts, total=len(dts)):
+    T = sky_temperature.calculate_antenna_temperature(
+        radar,
+        time + dt,
+        300,
+        gsm_map=gsm_map,
+        gsm_nside=gsm.nside,
+    )
+    sky_ant_temperature.append(T)
+
+
+fig, ax = plt.subplots()
+ax.plot((time + dts).datetime, sky_ant_temperature)
+ax.set_xlabel("Time")
+ax.set_ylabel("Sky temperature [K]")
 
 plt.show()
