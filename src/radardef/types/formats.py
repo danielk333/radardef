@@ -15,7 +15,7 @@ class SourceFormat(StrEnum):
     """Radar dataformats"""
 
     MUI = "mui"
-    EISCAT_MATBZ = "eiscat_matbz"
+    MATBZ2 = "matbz2"
     UNKNOWN = "unknown"
 
 

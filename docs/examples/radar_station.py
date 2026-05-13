@@ -59,9 +59,9 @@ for station in stations:
 
 from pyant.models import Isotropic, IsotropicParams
 
-from radardef.radar_stations.eiscat.converters import EiscatMatbzToDrf
+from radardef.radar_stations.eiscat.converters import MatBz2ToDrf
 from radardef.radar_stations.eiscat.data_loaders import DrfLoader
-from radardef.radar_stations.eiscat.validators import EiscatMatlab
+from radardef.radar_stations.eiscat.validators import MatBz2
 
 orodruin = RadarStation(
     station_id="Orodruin",
@@ -72,8 +72,8 @@ orodruin = RadarStation(
     alt=1371,
     beam=Isotropic(),
     beam_parameters=IsotropicParams(),
-    converters=[EiscatMatbzToDrf()],
-    validator=EiscatMatlab(),
+    converters=[MatBz2ToDrf()],
+    validator=MatBz2(),
     data_loaders=[DrfLoader],
 )
 

@@ -1,18 +1,14 @@
 import argparse
 import unittest
-from pathlib import Path
 
 import pytest
-from tests.unit import mocks
 
-import radardef.cli.commands_cli as commands_cli
 import radardef.cli.convert_cli as convert_cli
 import radardef.cli.format_cli as format_cli
 from radardef.types import SourceFormat, TargetFormat
 
 
 class CliTest(unittest.TestCase):
-
     def setUp(self):
         self.parser = argparse.ArgumentParser()
         return super().setUp()
@@ -30,11 +26,11 @@ class CliTest(unittest.TestCase):
         convert_cli.main(args, None)
 
         mui_to_h5 = f"{SourceFormat.MUI}:\n├Target format> {TargetFormat.H5}\n"
-        matbz_to_drf = f"{SourceFormat.EISCAT_MATBZ}:\n├Target format> {TargetFormat.DRF}\n"
+        matbz_to_hdf5 = f"{SourceFormat.MATBZ2}:\n├Target format> {TargetFormat.HDF5}\n"
 
         out, _ = self.capsys.readouterr()
         self.assertIn(mui_to_h5, out)
-        self.assertIn(matbz_to_drf, out)
+        self.assertIn(matbz_to_hdf5, out)
 
     def test_convert_cli_convert_bad_target(self):
 
@@ -82,7 +78,7 @@ class CliTest(unittest.TestCase):
 
         format_cli.main(args, None)
 
-        expected_output = f">{SourceFormat.MUI}\n>{SourceFormat.EISCAT_MATBZ}\n\n"
+        expected_output = f">{SourceFormat.MUI}\n>{SourceFormat.MATBZ2}\n\n"
         out, err = self.capsys.readouterr()
         self.assertEqual(expected_output, out)
 

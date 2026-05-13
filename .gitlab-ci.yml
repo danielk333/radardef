@@ -15,7 +15,7 @@ stages:
     - pip install -U pip
     - python -m venv venv
     - source venv/bin/activate
-    - pip install .[develop,profiling,mpi,skymaps]
+    - pip install .[develop,profiling,mpi,skymaps,digital_rf]
     - apt update
     - apt install -y openmpi-bin libopenmpi-dev
 
@@ -41,8 +41,8 @@ pytest:
     - apt-get update
     - apt-get -y install git
     - uv venv --python $VERSION
-    - uv sync --extra develop
-    - uv sync --extra tests
+    - source .venv/bin/activate
+    - uv pip install .[develop,digital_rf,tests]
     - uv run pytest
   coverage: /TOTAL.*? (100(?:\.0+)?\%|[1-9]?\d(?:\.\d+)?\%)$/
   rules:

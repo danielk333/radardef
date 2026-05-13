@@ -10,7 +10,6 @@ from .download_test_data import download_test_data
 
 
 class CliUserTest(unittest.TestCase):
-
     def __del__(self):
         # clear any generated files
         if self.loc_tmp.name == "tmp":
@@ -40,7 +39,7 @@ class CliUserTest(unittest.TestCase):
         src_file = self.loc_test_data / "eiscat/leo_bpark_2.2_SW@32m_small"
 
         parser = convert_cli.parser_build(argparse.ArgumentParser())
-        args = parser.parse_args(["convert", str(src_file), "drf", "-o", str(self.loc_tmp)])
+        args = parser.parse_args(["convert", str(src_file), "hdf5", "-o", str(self.loc_tmp)])
         convert_cli.main(args, None)
 
         assert len([x for x in self.loc_tmp.iterdir()]) != 0

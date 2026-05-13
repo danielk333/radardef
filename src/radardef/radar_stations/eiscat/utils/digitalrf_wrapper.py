@@ -12,7 +12,7 @@ for next available sample.
 from pathlib import Path
 from typing import Any, Optional
 
-import digital_rf
+import digital_rf  # type: ignore[import-not-found,unused-ignore]
 import numpy as np
 
 from radardef.radar_stations.eiscat.utils.drf_utils import index_from_ts, ts_from_index

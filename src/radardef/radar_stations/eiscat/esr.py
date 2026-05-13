@@ -7,9 +7,9 @@ from radardef.radar_stations.eiscat.beams.esr import (
 )
 from radardef.types import DishDiameter, StationID
 
-from .converters import EiscatMatbzToDrf
+from .converters import MatBz2ToDrf, MatBz2ToHDF5
 from .data_loaders import DrfLoader
-from .validators import EiscatMatlab
+from .validators import MatBz2
 
 
 class ESR(RadarStation):
@@ -50,7 +50,7 @@ class ESR(RadarStation):
             noise_temperature=70,
             power=1e6,
             frequency=500e6,
-            converters=[EiscatMatbzToDrf()],
-            validator=EiscatMatlab(),
+            converters=[MatBz2ToHDF5(), MatBz2ToDrf()],
+            validator=MatBz2(),
             data_loaders=[DrfLoader],
         )

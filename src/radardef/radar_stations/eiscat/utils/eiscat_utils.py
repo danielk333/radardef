@@ -268,6 +268,7 @@ def eiscat_load_file(
         "exp": {
             "name": expname,
             "version": expvers,
+            "owner": owner,
             "chnl": chnl,
             "sample_rate": sample_rate,
             "samples_per_file": n_samples,

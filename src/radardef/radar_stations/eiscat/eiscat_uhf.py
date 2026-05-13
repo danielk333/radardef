@@ -11,9 +11,9 @@ from radardef.radar_stations.eiscat.beams.uhf import (
 )
 from radardef.types import BeamType, EiscatUHFLocation, StationID
 
-from .converters import EiscatMatbzToDrf
+from .converters import MatBz2ToDrf, MatBz2ToHDF5
 from .data_loaders import DrfLoader, HDF5Loader
-from .validators import EiscatMatlab
+from .validators import MatBz2
 
 
 class EiscatUHF(RadarStation):
@@ -55,8 +55,8 @@ class EiscatUHF(RadarStation):
                     min_elevation=30,
                     noise_temperature=100,
                     frequency=930.0e6,
-                    converters=[EiscatMatbzToDrf()],
-                    validator=EiscatMatlab(),
+                    converters=[MatBz2ToDrf(), MatBz2ToHDF5()],
+                    validator=MatBz2(),
                     data_loaders=[DrfLoader, HDF5Loader],
                 )
             case EiscatUHFLocation.SODANKYLA:
@@ -72,8 +72,8 @@ class EiscatUHF(RadarStation):
                     min_elevation=30,
                     noise_temperature=100,
                     frequency=930.0e6,
-                    converters=[EiscatMatbzToDrf()],
-                    validator=EiscatMatlab(),
+                    converters=[MatBz2ToDrf(), MatBz2ToHDF5()],
+                    validator=MatBz2(),
                     data_loaders=[DrfLoader, HDF5Loader],
                 )
             case EiscatUHFLocation.TROMSO:
@@ -90,7 +90,7 @@ class EiscatUHF(RadarStation):
                     noise_temperature=100,
                     power=1.6e6,
                     frequency=930.0e6,
-                    converters=[EiscatMatbzToDrf()],
-                    validator=EiscatMatlab(),
+                    converters=[MatBz2ToHDF5(), MatBz2ToDrf()],
+                    validator=MatBz2(),
                     data_loaders=[DrfLoader, HDF5Loader],
                 )

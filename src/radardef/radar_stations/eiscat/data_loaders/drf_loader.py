@@ -7,7 +7,7 @@ import configparser
 from pathlib import Path
 from typing import Optional
 
-import digital_rf
+import digital_rf  # type: ignore[import-not-found,unused-ignore]
 import numpy as np
 import numpy.typing as npt
 

@@ -54,7 +54,7 @@ Convert one file, output in /tmp:
 
 ```bash
 
-    $ radardef convert path/to/random/file/MUI123467 h5 tmp/
+    $ radardef convert path/to/random/file/MUI123467 h5 -o tmp/
 ```
 Convert multiple files:
 

@@ -1,9 +1,11 @@
+import importlib.util
 import os
 import shutil
 import unittest
 from pathlib import Path
 
 import numpy.testing
+import pytest
 
 from radardef import RadarDef
 
@@ -50,6 +52,7 @@ class RadarDataTest(unittest.TestCase):
 
             self.assertGreater(amount_of_files, 1)
 
+    @pytest.mark.skipif(not importlib.util.find_spec("digital_rf"), reason="Digital RF is not installed")
     def test_eiscat_drf_convert(self):
 
         radar_def = RadarDef()
@@ -60,6 +63,17 @@ class RadarDataTest(unittest.TestCase):
         for dir in out:
             self.assertEqual(dir.parents[0], Path(output_dir))
             assert dir.is_dir()
+
+    def test_eiscat_hdf5_convert(self):
+
+        radar_def = RadarDef()
+        src_file = self.loc_test_data / "eiscat/leo_bpark_2.2_SW@32m_small"
+        output_dir = self.loc_tmp
+        out = radar_def.convert(src_file, "hdf5", output_dir)
+
+        for dir in out:
+            self.assertEqual(dir.parents[0], Path(output_dir))
+            assert dir.is_file()
 
     def test_mu_h5_convert_multiple_files(self):
 
@@ -162,6 +176,7 @@ class RadarDataTest(unittest.TestCase):
             self.assertNotEqual(len(data), 0)
             self.assertEqual(len(data), loader.bounds(channel=2)[1])
 
+    @pytest.mark.skipif(not importlib.util.find_spec("digital_rf"), reason="Digital RF is not installed")
     def test_eiscat_convert_and_load_drf_data(self):
 
         radar_def = RadarDef()
@@ -170,6 +185,38 @@ class RadarDataTest(unittest.TestCase):
         out = radar_def.convert(src_file, "drf", output_dir)
 
         loader = radar_def.load_data(out[0], "drf")
+
+        experiment_meta = loader.experiment
+
+        self.assertEqual(experiment_meta.name, "leo_bpark_2.2")
+        self.assertEqual(experiment_meta.radar_frequency, 500.5)
+        self.assertEqual(experiment_meta.t_ipp_usec, 20000)
+        self.assertEqual(experiment_meta.t_samp_usec, 1)
+        self.assertEqual(experiment_meta.ipp_samps, 20000)
+        self.assertEqual(experiment_meta.sample_rate, 1000000.0)
+        self.assertEqual(experiment_meta.rx_channels, ["32m"])
+        self.assertEqual(experiment_meta.tx_channel, "32m")
+        self.assertEqual(experiment_meta.t_rx_start_usec, 0.0)
+        self.assertEqual(experiment_meta.t_rx_end_usec, 20000.0)
+        self.assertEqual(experiment_meta.t_tx_start_usec, 82.0)
+        self.assertEqual(experiment_meta.t_tx_end_usec, 2002.0)
+        self.assertEqual(experiment_meta.t_cal_on_usec, 19900.0)
+        self.assertEqual(experiment_meta.t_cal_off_usec, 19997.0)
+
+        self.assertEqual(loader.epoch_bounds.ts_start_usec, 1637668800001245.0)
+        self.assertEqual(loader.epoch_bounds.ts_end_usec, 1637669017601226.0)
+
+        start, end = loader.bounds("32m")
+        self.assertIsNotNone(loader.read(channel="32m", start_sample=start, vector_length=10000))
+
+    def test_eiscat_convert_and_load_hdf5_data(self):
+
+        radar_def = RadarDef()
+        src_file = self.loc_test_data / "eiscat/leo_bpark_2.2_SW@32m_small"
+        output_dir = self.loc_tmp
+        out = radar_def.convert(src_file, "hdf5", output_dir)
+        print(out)
+        loader = radar_def.load_data(out[0], "hdf5")
 
         experiment_meta = loader.experiment
 

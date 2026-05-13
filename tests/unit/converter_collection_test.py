@@ -1,21 +1,19 @@
 import unittest
 from pathlib import Path
 
-from tests.unit import mocks
-
 from radardef.collections import ConverterCollection
 from radardef.types import SourceFormat, TargetFormat
+from tests.unit import mocks
 
 
 class ConverterCollectionTest(unittest.TestCase):
-
     def test_converters_available(self):
 
         converter_mui_h5_mock = mocks.converter_mock(
             SourceFormat.MUI, TargetFormat.H5, lambda src, dst: [Path("/converted_file/1")]
         )
         converter_eiscat_drf_mock = mocks.converter_mock(
-            SourceFormat.EISCAT_MATBZ, TargetFormat.DRF, lambda src, dst: [Path("/converted_file/2")]
+            SourceFormat.MATBZ2, TargetFormat.DRF, lambda src, dst: [Path("/converted_file/2")]
         )
 
         converter_mocks = [converter_mui_h5_mock, converter_eiscat_drf_mock]
@@ -39,7 +37,7 @@ class ConverterCollectionTest(unittest.TestCase):
             SourceFormat.MUI, TargetFormat.H5, lambda src, dst: [Path("/converted_file/1")]
         )
         converter_eiscat_drf_mock = mocks.converter_mock(
-            SourceFormat.EISCAT_MATBZ, TargetFormat.DRF, lambda src, dst: [Path("/converted_file/2")]
+            SourceFormat.MATBZ2, TargetFormat.DRF, lambda src, dst: [Path("/converted_file/2")]
         )
 
         converter_mocks = [converter_mui_h5_mock, converter_eiscat_drf_mock]
@@ -58,7 +56,7 @@ class ConverterCollectionTest(unittest.TestCase):
             SourceFormat.MUI, TargetFormat.H5, lambda src, dst: [Path("/converted_file/1")]
         )
         converter_eiscat_h5_mock = mocks.converter_mock(
-            SourceFormat.EISCAT_MATBZ, TargetFormat.H5, lambda src, dst: [Path("/converted_file/2")]
+            SourceFormat.MATBZ2, TargetFormat.H5, lambda src, dst: [Path("/converted_file/2")]
         )
 
         converter_mocks = [converter_mui_h5_mock, converter_eiscat_h5_mock]
@@ -69,7 +67,7 @@ class ConverterCollectionTest(unittest.TestCase):
 
         output = converter_collection.convert(
             [Path("some_mui_file"), Path("some_eiscat_file")],
-            [SourceFormat.MUI, SourceFormat.EISCAT_MATBZ],
+            [SourceFormat.MUI, SourceFormat.MATBZ2],
             TargetFormat.H5,
             Path(""),
         )
@@ -83,7 +81,7 @@ class ConverterCollectionTest(unittest.TestCase):
             SourceFormat.MUI, TargetFormat.H5, lambda src, dst: [Path("/converted_file/1")]
         )
         converter_eiscat_drf_mock = mocks.converter_mock(
-            SourceFormat.EISCAT_MATBZ, TargetFormat.DRF, lambda src, dst: [Path("/converted_file/2")]
+            SourceFormat.MATBZ2, TargetFormat.DRF, lambda src, dst: [Path("/converted_file/2")]
         )
 
         converter_mocks = [converter_mui_h5_mock, converter_eiscat_drf_mock]

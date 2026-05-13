@@ -22,14 +22,14 @@ from radardef.radar_stations.eiscat.utils.eiscat_utils import (
 from radardef.types import Boundparam, Expparam, Metaparam, SourceFormat, TargetFormat
 
 
-class EiscatMatbzToDrf(Converter):
+class MatBz2ToDrf(Converter):
     """Converts from Eiscat mat.bz2 format to DRF format"""
 
     __logger = logging.getLogger(__name__)
 
     def __init__(self) -> None:
         self.__compression = 0
-        super().__init__(SourceFormat.EISCAT_MATBZ, TargetFormat.DRF)
+        super().__init__(SourceFormat.MATBZ2, TargetFormat.DRF)
 
     def set_compression(self, level: int) -> None:
         """Set compression of the DRF conversion"""

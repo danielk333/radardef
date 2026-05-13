@@ -7,9 +7,9 @@ from radardef.components.radar_station_template import RadarStation
 from radardef.radar_stations.eiscat.beams.tsdr import tsdr_beam, tsdr_phased_beam
 from radardef.types import StationID
 
-from .converters import EiscatMatbzToDrf
+from .converters import MatBz2ToDrf, MatBz2ToHDF5
 from .data_loaders import DrfLoader
-from .validators import EiscatMatlab
+from .validators import MatBz2
 
 
 class TSDR(RadarStation):
@@ -40,7 +40,7 @@ class TSDR(RadarStation):
             noise_temperature=100,
             power=0.5e6,
             frequency=1.8e9,
-            converters=[EiscatMatbzToDrf()],
-            validator=EiscatMatlab(),
+            converters=[MatBz2ToHDF5(), MatBz2ToDrf()],
+            validator=MatBz2(),
             data_loaders=[DrfLoader],
         )

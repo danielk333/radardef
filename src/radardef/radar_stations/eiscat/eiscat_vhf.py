@@ -4,9 +4,9 @@ from radardef.components.radar_station_template import RadarStation
 from radardef.radar_stations.eiscat.beams.vhf import eiscat_vhf_beam
 from radardef.types import StationID
 
-from .converters import EiscatMatbzToDrf
+from .converters import MatBz2ToDrf, MatBz2ToHDF5
 from .data_loaders import DrfLoader, HDF5Loader
-from .validators import EiscatMatlab
+from .validators import MatBz2
 
 
 class EiscatVHF(RadarStation):
@@ -26,7 +26,7 @@ class EiscatVHF(RadarStation):
             noise_temperature=100,
             power=1.6e6,
             frequency=224e6,
-            converters=[EiscatMatbzToDrf()],
-            validator=EiscatMatlab(),
+            converters=[MatBz2ToHDF5(), MatBz2ToDrf()],
+            validator=MatBz2(),
             data_loaders=[DrfLoader, HDF5Loader],
         )
