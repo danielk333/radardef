@@ -48,11 +48,15 @@ assert data_loader is not None, "No data loader compatible with the file"
 data_loader = radardef.Mu().load_data(converted_files[0])
 assert data_loader is not None, "MU h5 data loader is not compatible with the filetype"
 
-# ## Option 3 - using a collection of several stations dataloaders
+# ## Option 3 - using a collection of several dataloaders
 # ---
-# If data from some specific stations should be analysed a collection can be used.
+# If data from some different datatypes should be analysed a collection can be used.
+# Here we combine the loaders of two stations.
 
-dl_collection = radardef.DataLoaderCollection([radardef.Mu(), radardef.EiscatUHF(EiscatUHFLocation.KIRUNA)])
+dl_collection = radardef.DataLoaderCollection(
+    radardef.Mu().data_loaders.get_data_loaders()
+    + radardef.EiscatUHF(EiscatUHFLocation.KIRUNA).data_loaders.get_data_loaders()
+)
 data_loader = dl_collection.load_data(converted_files[0])
 assert data_loader is not None, "No data loader compatible with the file"
 

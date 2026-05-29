@@ -6,7 +6,7 @@ from astropy.time import Time
 from astropy_healpix import HEALPix
 from pygdsm import GlobalSkyModel16
 
-from radardef.components.radar_station_template import RadarStation
+from radardef.radar_station import RadarStation
 
 
 def temperature_map(

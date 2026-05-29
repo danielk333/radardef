@@ -139,6 +139,14 @@ class HDF5Loader(DataLoader):
             Complex data from channel shape: (vector_length,)
         """
         if channel:
+            if isinstance(channel, list):
+                if len(channel) > len(self.experiment.rx_channels):
+                    raise Exception(
+                        f"More channels requested than available, requested: {channel}, available: {self.experiment.rx_channels}"
+                    )
+                if len(channel) == 1:
+                    channel = channel[0]
+
             if not isinstance(channel, str):
                 channel = str(channel)
 
@@ -157,7 +165,7 @@ class HDF5Loader(DataLoader):
         file = self._open_hdf5_file(self.path)
 
         # Concatenate the dump windows
-        raw_data = file[self.DATA][self.DATA_LEVEL][dump_index : dump_index + windows].reshape(2, -1)
+        raw_data = np.concatenate(file[self.DATA][self.DATA_LEVEL][dump_index : dump_index + windows], axis=1)
 
         file.close()
 

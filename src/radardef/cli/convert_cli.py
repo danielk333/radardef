@@ -12,6 +12,8 @@ from radardef.types import TargetFormat
 
 from .commands_cli import add_command
 
+logger = logging.getLogger(__name__)
+
 
 def main(args: argparse.Namespace, cli_logger: logging.Logger) -> None:
     """Converter CLI available to the user"""
@@ -38,9 +40,9 @@ def main(args: argparse.Namespace, cli_logger: logging.Logger) -> None:
 
     converted_data = radar_def.convert(args.files, target_format, args.output)
 
-    if converted_data is None:
-        print("Path/paths was not valid")
-        return
+    if converted_data is None or len(converted_data) == 0:
+        logger.error("Input path is not a valid file/directory")
+        raise ValueError("Input path is not a valid file/directory")
 
     if cli_logger:
         cli_logger.info("Conversion complete")

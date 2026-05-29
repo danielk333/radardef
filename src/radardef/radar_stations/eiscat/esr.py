@@ -1,6 +1,6 @@
 """Eiscat Svalbard Radar (ESR) object"""
 
-from radardef.components.radar_station_template import RadarStation
+from radardef.radar_station import RadarStation
 from radardef.radar_stations.eiscat.beams.esr import (
     esr_32m_cassegrain_beam,
     esr_42m_cassegrain_beam,

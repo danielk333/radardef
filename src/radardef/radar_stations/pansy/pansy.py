@@ -2,7 +2,8 @@
 
 from pyant.beam import Beam
 from pyant.types import Parameters
-from radardef.components.radar_station_template import RadarStation
+
+from radardef.radar_station import RadarStation
 from radardef.radar_stations.pansy.beams import (
     pansy_array_beam,
     pansy_interpolated_array_beam,

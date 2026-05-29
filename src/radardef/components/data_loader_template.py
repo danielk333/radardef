@@ -16,7 +16,8 @@ class DataLoader:
     Data loader template, should be inherited by all data loaders
 
     Args:
-        experiment: Experiment definition to be able to decode the data
+        path: Path to file containing the data.
+        exp_def: Experiment definition to be able to decode the data.
 
 
     """
@@ -59,7 +60,7 @@ class DataLoader:
     @classmethod
     def validate(cls, path: Path) -> bool:
         """Validate that the file format compatible with the loader"""
-        return cls.validator.validate(path)
+        return cls.validator.validate(path) or cls.validator.contains_format(path)
 
     @abstractmethod
     def bounds(self, channel: str | int) -> tuple[int, int]:

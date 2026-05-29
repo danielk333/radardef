@@ -36,3 +36,18 @@ class Validator(Generic[T]):
             src: Path to file/directory
         """
         pass
+
+    def contains_format(self, dir: str | Path) -> bool:
+        """
+        Abstract method, validate that
+
+        Args:
+            dir: Path to directory
+        """
+        dir = Path(dir)
+
+        if dir.is_dir():
+            files = [f for f in dir.iterdir() if self.validate(f)]
+            return len(files) > 0
+        else:
+            return False

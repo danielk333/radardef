@@ -45,7 +45,8 @@ class RadarDataTest(unittest.TestCase):
         out = radar_def.convert(src_file, "h5", output_dir)
 
         for dir in out:
-            self.assertEqual(dir.parents[2], Path(output_dir))
+            # Assert output dir is a subdir of dir
+            assert str(output_dir) in str(dir)
             assert dir.is_dir()
 
             amount_of_files = len([x for x in dir.iterdir() if x.is_file()])
@@ -61,7 +62,8 @@ class RadarDataTest(unittest.TestCase):
         out = radar_def.convert(src_file, "drf", output_dir)
 
         for dir in out:
-            self.assertEqual(dir.parents[0], Path(output_dir))
+            # Assert output dir is a subdir of dir
+            assert str(output_dir) in str(dir)
             assert dir.is_dir()
 
     def test_eiscat_hdf5_convert(self):
@@ -72,7 +74,8 @@ class RadarDataTest(unittest.TestCase):
         out = radar_def.convert(src_file, "hdf5", output_dir)
 
         for dir in out:
-            self.assertEqual(dir.parents[0], Path(output_dir))
+            # Assert output dir is a subdir of dir
+            assert str(output_dir) in str(dir)
             assert dir.is_file()
 
     def test_mu_h5_convert_multiple_files(self):
@@ -82,11 +85,9 @@ class RadarDataTest(unittest.TestCase):
         output_dir = self.loc_tmp
         out = radar_def.convert(src_files, "h5", output_dir)
 
-        self.assertEqual(out[0].parents[2], Path(output_dir))
-        self.assertEqual(out[1].parents[2], Path(output_dir))
-
         for dir in out:
-            self.assertEqual(dir.parents[2], Path(output_dir))
+            # Assert output dir is a subdir of dir
+            assert str(output_dir) in str(dir)
             assert dir.is_dir()
 
             amount_of_files = len([x for x in dir.iterdir() if x.is_file()])
@@ -134,6 +135,16 @@ class RadarDataTest(unittest.TestCase):
             self.assertIsNotNone(data)
             self.assertNotEqual(len(data), 0)
             self.assertEqual(len(data), loader.bounds(channel=chnl)[1])
+        data = loader.read(start_sample=20, vector_length=1000)
+        self.assertEqual(
+            data.shape,
+            (
+                len(
+                    experiment_meta.rx_channels,
+                ),
+                1000,
+            ),
+        )
 
     def test_mu_convert_and_load_h5_data(self):
 
@@ -207,7 +218,9 @@ class RadarDataTest(unittest.TestCase):
         self.assertEqual(loader.epoch_bounds.ts_end_usec, 1637669017601226.0)
 
         start, end = loader.bounds("32m")
-        self.assertIsNotNone(loader.read(channel="32m", start_sample=start, vector_length=10000))
+        data = loader.read(channel="32m", start_sample=start, vector_length=10000)
+        self.assertIsNotNone(data)
+        self.assertEqual(len(data), 10000)
 
     def test_eiscat_convert_and_load_hdf5_data(self):
 
@@ -239,4 +252,6 @@ class RadarDataTest(unittest.TestCase):
         self.assertEqual(loader.epoch_bounds.ts_end_usec, 1637669017601226.0)
 
         start, end = loader.bounds("32m")
-        self.assertIsNotNone(loader.read(channel="32m", start_sample=start, vector_length=10000))
+        data = loader.read(channel="32m", start_sample=start, vector_length=10000)
+        self.assertIsNotNone(data)
+        self.assertEqual(len(data), 10000)

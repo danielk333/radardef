@@ -1,6 +1,6 @@
 # Experiment definition
 
-The experiment section is defined by [ExpDef](../reference/radardef/types/types.md#radardef.types.types.experiment.ExpDef), it is a dataclass containing the specifications for defining the rx and tx signal. The parameters are:
+The experiment section is defined by [ExpDef](../reference/radardef/types/types.md#radardef.types.types.ExpDef), it is a dataclass containing the specifications for defining the rx and tx signal. The parameters are:
 
 - **name**: Name of experiment.
 - **radar_frequency**: Radar frequency
@@ -13,6 +13,8 @@ The experiment section is defined by [ExpDef](../reference/radardef/types/types.
 - **t_rx_end_usec**: Rx signal end in the inter pulse period, in microseconds.
 - **t_tx_start_usec**: Tx signal start in the inter pulse period, in microseconds.
 - **t_tx_end_usec**: Tx signal end in the inter pulse period, in microseconds.
+- **baud_length_usec**: Tx signal baud length in microseconds.
+- **samples_per_file**: Amount of samples stored in each file from the experiment.
 - **wavelength**: The signal wavelength.
 - **tx_channel** (_optional_): As not all radars are transmitting this is optional.
 - **t_cal_on_usec** (_optional_): Calibration on time in microseconds.

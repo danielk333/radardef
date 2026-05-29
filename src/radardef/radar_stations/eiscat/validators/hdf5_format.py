@@ -15,4 +15,9 @@ class HDF5(Validator):
     def validate(self, src: str | Path) -> bool:
         """Validate file is a Eiscat hdf5 file"""
         path = Path(src).resolve()
+
+        return self._is_hdf5_file(path)
+
+    def _is_hdf5_file(self, path: Path) -> bool:
+        """hdf5 name format"""
         return path.name.endswith(".hdf5")

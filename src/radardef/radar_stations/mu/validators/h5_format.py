@@ -16,12 +16,10 @@ class H5(Validator):
         """Validate that the path is a h5 file of the correct format"""
         path = Path(src).resolve()
 
-        if path.is_file():
-            return self._is_h5_file(path)
-        else:
-            files = [f for f in path.iterdir() if self._is_h5_file(f)]
-            return len(files) > 0
+        return self._is_h5_file(path)
 
     def _is_h5_file(self, src: Path) -> bool:
-        """Compatible h5 file"""
+        """H5 name format"""
+        if len(src.name) < 11:
+            return False
         return (src.name[10] == "T") and (src.suffix == ".h5")

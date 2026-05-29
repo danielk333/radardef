@@ -38,9 +38,7 @@ class DataLoaderCollectionTest(unittest.TestCase):
 
         data_loader_mocks = [H5MuLoader, DrfBParkLoader, DrfMParkLoader]
 
-        radar_mock = mocks.radar_mock(data_loaders=data_loader_mocks)
-
-        data_loader_collection = DataLoaderCollection([radar_mock])
+        data_loader_collection = DataLoaderCollection(data_loader_mocks)
 
         loader = data_loader_collection.load_data(Path(""))
 
@@ -76,9 +74,7 @@ class DataLoaderCollectionTest(unittest.TestCase):
 
         data_loader_mocks = [H5MuLoader, DrfBParkLoader, DrfMParkLoader]
 
-        radar_mock = mocks.radar_mock(data_loaders=data_loader_mocks)
-
-        data_loader_collection = DataLoaderCollection([radar_mock])
+        data_loader_collection = DataLoaderCollection(data_loader_mocks)
 
         converted_format = data_loader_collection._get_load_format(Path(""))
 

@@ -6,7 +6,8 @@ import argparse
 import logging
 
 from radardef.collections import FormatCollection
-from radardef.radar_stations import EiscatUHF, Mu
+from radardef.radar_stations.eiscat.validators import DRF, HDF5, MatBz2
+from radardef.radar_stations.mu.validators import MUI
 
 from .commands_cli import add_command
 
@@ -14,7 +15,7 @@ from .commands_cli import add_command
 def main(args: argparse.Namespace, cli_logger: logging.Logger) -> None:
     """Converter CLI available to the user"""
 
-    format_validator = FormatCollection([Mu(), EiscatUHF()])
+    format_validator = FormatCollection([MUI(), HDF5(), DRF(), MatBz2()])
 
     if args.list:
         print(format_validator.list_formats())

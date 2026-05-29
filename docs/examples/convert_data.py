@@ -4,16 +4,18 @@
 # the needed data and to simplify reading the data later.
 
 # Workaround to make jupyter notebook find utils
-import sys
 import os
+import sys
 from pathlib import Path
 
 sys.path.insert(1, str(Path(os.path.abspath("")) / "docs" / "examples"))
 
 import tempfile
-import radardef
-from radardef.types import EiscatUHFLocation, TargetFormat
+
 import utils
+
+import radardef
+from radardef.types import TargetFormat
 
 # ## Prerequisites - download and convert data
 # ---
@@ -43,18 +45,22 @@ converted_files = station.convert(raw_data, TargetFormat.H5, Path(converted_data
 utils.print_dir_items(converted_files)
 
 
-# ## Option 3 - using a collection of several station converters
+# ## Option 3 - using a collection of several converters
 # ---
-# In this case we have a collection of two stations, in the case of a collection it is neccessary to
+# In this case we have a collection of two converters, in the case of a collection it is neccessary to
 # manually check what data type the raw data is.
 
-stations = [radardef.Mu(), radardef.EiscatUHF(EiscatUHFLocation.KIRUNA)]
-source_format = radardef.FormatCollection(stations).get_format(raw_data)
+converters = [
+    radardef.radar_stations.mu.converters.MuiToH5(),
+    radardef.radar_stations.eiscat.converters.MatBz2ToHDF5(),
+]
+validators = [conv.validator for conv in converters]
+source_format = radardef.FormatCollection(validators).get_format(raw_data)
 print(f"The source format is: {source_format}")
 
 # After this we can convert the data using the collection
 
-conv_collection = radardef.ConverterCollection(stations)
+conv_collection = radardef.ConverterCollection(converters)
 converted_files = conv_collection.convert(raw_data, source_format, TargetFormat.H5, converted_data_path.name)
 utils.print_dir_items(converted_files)
 

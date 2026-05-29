@@ -3,9 +3,10 @@ This module contains functionality to load MUI -> h5 converted files in a standa
 is based on the Dataloader template
 """
 
+import datetime as dt
+import functools
 import logging
 import math
-from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
@@ -127,19 +128,6 @@ class H5Loader(DataLoader):
             ```
         """
 
-        chnl: int | npt.NDArray | None
-        if channel:
-            if isinstance(channel, str):
-                chnl = int(channel)
-            if isinstance(channel, list):
-                chnl = np.array(channel).astype(np.int64)
-            else:
-                chnl = int(channel)
-            if not self._is_channel_present(chnl):
-                raise Exception(f"Atleast one of the requested channels {chnl} is missing in {dir}")
-        else:
-            chnl = None
-
         if self.path.is_dir():
             if start_sample is not None:
                 start_file = math.floor(start_sample / self.experiment.samples_per_file)
@@ -161,43 +149,67 @@ class H5Loader(DataLoader):
 
             files = self.files[start_file : start_file + num_files]
             padded_data = np.empty((0,), dtype=np.complex128)
-            for i, file in enumerate(files):
-                h5file = self._open_h5_file(file)
-                if chnl is not None:
-                    data = h5file["data"][chnl - 1]
-                else:
-                    data = h5file["data"][:]
 
-                h5file.close()
+            for i, file in enumerate(files):
+                data = self.get_data(file, channel if not isinstance(channel, list) else tuple(channel))
 
                 if i == 0:
                     padded_data = self._flatten_and_zero_pad(data)
                 else:
-                    padded_data = np.concatenate((padded_data, self._flatten_and_zero_pad(data)), axis=0)
+                    padded_data = np.concatenate((padded_data, self._flatten_and_zero_pad(data)), axis=-1)
 
             if padded_data.ndim >= 2:
                 return padded_data[:, index : index + samples]
             else:
                 return padded_data[index : index + samples]
         else:
-            h5file = self._open_h5_file(self.path)
-            if chnl is not None:
-                data = h5file["data"][chnl - 1]
-            else:
-                data = h5file["data"][:]
-            h5file.close()
+            data = self.get_data(self.path, channel if not isinstance(channel, list) else tuple(channel))
 
-            # flatten and fill with zeroes
             padded_data = self._flatten_and_zero_pad(data)
 
             if start_sample is None and vector_length is None:
                 return padded_data
             elif start_sample is not None and vector_length is not None:
-                return padded_data[start_sample : start_sample + vector_length]
+                if data.ndim > 1:
+                    return padded_data[:, start_sample : start_sample + vector_length]
+                else:
+                    return padded_data[start_sample : start_sample + vector_length]
             elif start_sample is None and vector_length is not None:
-                return padded_data[0:vector_length]
+                if data.ndim > 1:
+                    return padded_data[:, 0:vector_length]
+                else:
+                    return padded_data[0:vector_length]
             else:
-                return padded_data[start_sample:]
+                if data.ndim > 1:
+                    return padded_data[:, start_sample:]
+                else:
+                    return padded_data[start_sample:]
+
+    @functools.lru_cache(maxsize=10)
+    def get_data(
+        self, path: Path, channel: Optional[str | int | tuple[int] | tuple[str]] = None
+    ) -> npt.NDArray:
+
+        chnl: int | npt.NDArray | None
+        if channel:
+            if isinstance(channel, str):
+                chnl = int(channel)
+            if isinstance(channel, tuple):
+                chnl = np.array(channel).astype(np.int64)
+            else:
+                chnl = int(channel)
+            if not self._is_channel_present(chnl):
+                raise Exception(f"Atleast one of the requested channels {chnl} is missing in {dir}")
+        else:
+            chnl = None
+
+        with h5py.File(str(path), "r") as h5file:
+            if chnl is not None:
+                data = h5file["data"][chnl - 1]
+            else:
+                data = h5file["data"][:]
+
+        return data
 
     def pointing(self, sample: int) -> Pointing:
         """Pointing data, data describing the radar pointing direction in spherical coordinates"""
@@ -230,23 +242,6 @@ class H5Loader(DataLoader):
 
             return padded_data.reshape(channels, pulses * self.experiment.ipp_samps)
 
-    def _open_h5_file(self, path: Path) -> h5py.File:
-        """Open h5 file and return reader"""
-
-        try:
-            h5file = h5py.File(str(path), "r")
-        except FileNotFoundError:
-            self.__logger.exception(f"Could not open file: {path}. File does not exist.")
-            raise
-        except OSError:
-            self.__logger.exception(f"File {path} was not a h5 file, and was probably in binary format.")
-            raise
-        except UnicodeDecodeError:
-            self.__logger.exception(f"File {path} was not a h5 file.")
-            raise
-
-        return h5file
-
     def _get_all_files_from_dir(self, path: Path) -> list[Path]:
         """Get all files available in dir"""
         paths: list[Path] = []
@@ -263,30 +258,33 @@ class H5Loader(DataLoader):
     def _extract_bounds(self, path: Path) -> tuple[BoundParams, dict[str | int, tuple[int, int]]]:
         """Get bounds from h5 file"""
 
-        h5file = self._open_h5_file(path)
-        start_time = datetime.strptime(str(h5file.attrs["record_start_time"])[0:26], "%Y-%m-%dT%H:%M:%S.%f")
-        end_time = datetime.strptime(str(h5file.attrs["record_end_time"])[0:26], "%Y-%m-%dT%H:%M:%S.%f")
-        # time can be validated by end_time = start_time.timestamp() + (n_ipp * t_ipp_usec) * 1e-6, n_ipp = 512
-        # if this is not matching maybe the measurement stopped  early
-        epoch_bounds = BoundParams(
-            ts_start_usec=int(start_time.timestamp() * 1e6),
-            ts_end_usec=int(end_time.timestamp() * 1e6),
-        )
+        with h5py.File(str(path), "r") as h5file:
+            start_time = dt.datetime.strptime(
+                str(h5file.attrs["record_start_time"])[0:26], "%Y-%m-%dT%H:%M:%S.%f"
+            ).replace(tzinfo=dt.timezone.utc)
+            end_time = dt.datetime.strptime(
+                str(h5file.attrs["record_end_time"])[0:26], "%Y-%m-%dT%H:%M:%S.%f"
+            ).replace(tzinfo=dt.timezone.utc)
 
-        sample_bounds: dict[str | int, tuple[int, int]] = {}
-        for j, data in enumerate(h5file["data"]):
-            channel = j + 1
+            # time can be validated by end_time = start_time.timestamp() + (n_ipp * t_ipp_usec) * 1e-6, n_ipp = 512
+            # if this is not matching maybe the measurement stopped  early
+            epoch_bounds = BoundParams(
+                ts_start_usec=int(start_time.timestamp() * 1e6),
+                ts_end_usec=int(end_time.timestamp() * 1e6),
+            )
 
-            if channel in self.experiment.rx_channels:
-                pulses = len(data)
-                ipp_length = int(self.experiment.t_ipp_usec / self.experiment.t_samp_usec)
-                sample_bounds[channel] = (0, pulses * ipp_length)
-            else:
-                self.__logger.debug(
-                    f"Channel: {j} is present in measurement file but not in experiment definition"
-                )
+            sample_bounds: dict[str | int, tuple[int, int]] = {}
+            for j, data in enumerate(h5file["data"]):
+                channel = j + 1
 
-        h5file.close()
+                if channel in self.experiment.rx_channels:
+                    pulses = len(data)
+                    ipp_length = int(self.experiment.t_ipp_usec / self.experiment.t_samp_usec)
+                    sample_bounds[channel] = (0, pulses * ipp_length)
+                else:
+                    self.__logger.debug(
+                        f"Channel: {j} is present in measurement file but not in experiment definition"
+                    )
 
         return epoch_bounds, sample_bounds
 
@@ -303,44 +301,42 @@ class H5Loader(DataLoader):
         previous_end_point = "unknwn"
 
         for i, f in enumerate(paths):
-            h5file = self._open_h5_file(f)
+            with h5py.File(str(f), "r") as h5file:
+                # Extract meta data, should be general for all files
+                if i == 0:
+                    start_time = dt.datetime.strptime(
+                        str(h5file.attrs["record_start_time"])[0:26], "%Y-%m-%dT%H:%M:%S.%f"
+                    ).replace(tzinfo=dt.timezone.utc)
+                # Store end point of the directory
+                if i == (len(paths) - 1):
+                    end_time = dt.datetime.strptime(
+                        str(h5file.attrs["record_end_time"])[0:26], "%Y-%m-%dT%H:%M:%S.%f"
+                    ).replace(tzinfo=dt.timezone.utc)
 
-            # Extract meta data, should be general for all files
-            if i == 0:
-                start_time = datetime.strptime(
-                    str(h5file.attrs["record_start_time"])[0:26], "%Y-%m-%dT%H:%M:%S.%f"
-                )
-            # Store end point of the directory
-            if i == (len(paths) - 1):
-                end_time = datetime.strptime(
-                    str(h5file.attrs["record_end_time"])[0:26], "%Y-%m-%dT%H:%M:%S.%f"
-                )
+                # Validate that the data is sequential
+                if i != 0:
+                    current_start_point = str(h5file.attrs["record_start_time"])[0:26]
+                    if previous_end_point != current_start_point:
+                        self.__logger.warning(
+                            f"The data is not sequential, there is a time gap before file {f.name}."
+                            f"The end point of previous file was: {previous_end_point} and the start point of current file is: {current_start_point}"
+                        )
+                previous_end_point = str(h5file.attrs["record_end_time"])[0:26]
 
-            # Validate that the data is sequential
-            if i != 0:
-                current_start_point = str(h5file.attrs["record_start_time"])[0:26]
-                if previous_end_point != current_start_point:
-                    self.__logger.warning(
-                        f"The data is not sequential, there is a time gap before file {f.name}."
-                        f"The end point of previous file was: {previous_end_point} and the start point of current file is: {current_start_point}"
-                    )
-            previous_end_point = str(h5file.attrs["record_end_time"])[0:26]
-
-            # Calculate channel sample bounds
-            ipp_length = int(self.experiment.t_ipp_usec / self.experiment.t_samp_usec)
-            for j, data in enumerate(h5file["data"]):
-                channel = j + 1
-                if channel in self.experiment.rx_channels:
-                    min_max = (0, len(data) * ipp_length)
-                    if channel not in sample_bounds:
-                        sample_bounds[channel] = min_max
+                # Calculate channel sample bounds
+                ipp_length = int(self.experiment.t_ipp_usec / self.experiment.t_samp_usec)
+                for j, data in enumerate(h5file["data"]):
+                    channel = j + 1
+                    if channel in self.experiment.rx_channels:
+                        min_max = (0, len(data) * ipp_length)
+                        if channel not in sample_bounds:
+                            sample_bounds[channel] = min_max
+                        else:
+                            sample_bounds[channel] = tuple(np.add(sample_bounds[channel], min_max))
                     else:
-                        sample_bounds[channel] = tuple(np.add(sample_bounds[channel], min_max))
-                else:
-                    self.__logger.debug(
-                        f"Channel: {j} is present in measurement file but not in experiment definition"
-                    )
-            h5file.close()
+                        self.__logger.debug(
+                            f"Channel: {j} is present in measurement file but not in experiment definition"
+                        )
 
         epoch_bounds = BoundParams(
             ts_start_usec=int(start_time.timestamp() * 1e6),

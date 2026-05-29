@@ -2,13 +2,17 @@ import logging
 from pathlib import Path
 from typing import Optional
 
+from tqdm import tqdm
+
+from radardef import RadarStation
 from radardef.collections import (
     ConverterCollection,
     DataLoaderCollection,
     FormatCollection,
 )
-from radardef.components import DataLoader, RadarStation
+from radardef.components import DataLoader
 from radardef.radar_stations import ESR, TSDR, Eiscat3D, EiscatUHF, EiscatVHF, Mu, Pansy
+from radardef.tools.global_mpi import get_mpi
 from radardef.types import (
     DishDiameter,
     Eiscat3DLocation,
@@ -41,7 +45,7 @@ class RadarDef:
     @property
     def data_loader_collection(self) -> DataLoaderCollection:
         """Collection of all data loader"""
-        return self.__data_loader
+        return self.__data_loader_collection
 
     @property
     def format_collection(self) -> FormatCollection:
@@ -49,6 +53,9 @@ class RadarDef:
         return self.__format_collection
 
     def __init__(self) -> None:
+        self.__converter_collection = ConverterCollection([])
+        self.__data_loader_collection = DataLoaderCollection([])
+        self.__format_collection = FormatCollection([])
 
         self.__radars: dict[str, RadarStation] = dict()
 
@@ -61,24 +68,22 @@ class RadarDef:
 
         self.add_radars([Mu(), Pansy(), TSDR(), EiscatVHF()])
 
-        self.reload_collections()
-
-    def reload_collections(self) -> None:
-        """Reload all collections, if new radar stations has been added"""
-        self.__converter_collection = ConverterCollection(list(self.__radars.values()))
-        self.__format_collection = FormatCollection(list(self.__radars.values()))
-        self.__data_loader = DataLoaderCollection(list(self.__radars.values()))
-
     def add_radar(self, radar_station: RadarStation) -> None:
         """Add one radar station to the collection, then reload the collections"""
         self.__radars[radar_station.station_id.lower()] = radar_station
-        self.reload_collections()
+        self.__converter_collection.add_converters(radar_station.converters.get_converters())
+        self.__data_loader_collection.add_data_loaders(radar_station.data_loaders.get_data_loaders())
+        if radar_station.validator:
+            self.__format_collection.add_validator(radar_station.validator)
 
     def add_radars(self, radar_stations: list[RadarStation]) -> None:
         """Add several radar stations to the collection, then reload the collections"""
         for radar in radar_stations:
             self.__radars[radar.station_id.lower()] = radar
-        self.reload_collections()
+            self.__converter_collection.add_converters(radar.converters.get_converters())
+            self.__data_loader_collection.add_data_loaders(radar.data_loaders.get_data_loaders())
+            if radar.validator:
+                self.__format_collection.add_validator(radar.validator)
 
     def delete_radar(self, key: str) -> None:
         """Remove a radar station, key needs to match station id"""
@@ -87,7 +92,6 @@ class RadarDef:
             del self.__radars[key]
         except KeyError:
             self.__logger.info("No radar deleted, key does not exist")
-        self.reload_collections()
 
     def get_radar(self, id: str) -> RadarStation | None:
         """Get a specific radar station, key needs to match station id"""
@@ -116,6 +120,7 @@ class RadarDef:
         raw_paths: list[str] | list[Path] | str | Path,
         target_format: TargetFormat,
         output_directory: str,
+        progress: bool = False,
     ) -> list[Path] | None:
         """
         Convert data to a target format
@@ -136,17 +141,35 @@ class RadarDef:
 
         roots = self._get_root_directories(raw_paths)  # type: ignore[arg-type]
         path_and_format = self._get_source_formats(roots, self.__format_collection)
-        try:
-            paths, source_formats = zip(*path_and_format)
-        except ValueError:
-            self.__logger.error("Input path/paths is not a valid file/directory")
-            return None
-        return self.converter_collection.convert(
-            paths,
-            source_formats,
-            self._validate_target_format(target_format),
-            Path(output_directory).resolve(),
-        )
+        target_format = self._validate_target_format(target_format)
+
+        output = []
+        comm = get_mpi()
+        if progress and comm.rank == 0:
+            pbar = tqdm(
+                desc="Conversion ",
+                total=len(path_and_format),
+                position=comm.size + 1,
+            )
+        else:
+            pbar = None
+
+        for path, format in path_and_format:
+            ret = self.converter_collection.convert(
+                path,
+                format,
+                target_format,
+                Path(output_directory).resolve(),
+                progress=progress,
+            )
+
+            if pbar and comm.rank == 0:
+                pbar.update(1)
+
+            if ret:
+                output += ret
+
+        return output
 
     def load_data(
         self,

@@ -1,6 +1,6 @@
 """Eiscat VHF radar object"""
 
-from radardef.components.radar_station_template import RadarStation
+from radardef.radar_station import RadarStation
 from radardef.radar_stations.eiscat.beams.vhf import eiscat_vhf_beam
 from radardef.types import StationID
 

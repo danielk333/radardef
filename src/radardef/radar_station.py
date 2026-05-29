@@ -9,10 +9,11 @@ from pyant import Beam
 from pyant.types import Parameters
 from spacecoords import celestial, frames, spherical
 
+from radardef.collections import ConverterCollection, DataLoaderCollection
 from radardef.components.converter_template import Converter
 from radardef.components.data_loader_template import DataLoader
 from radardef.components.validator_template import Validator
-from radardef.types import ExpDef, TargetFormat
+from radardef.types import ExpDef, SourceFormat, TargetFormat
 
 
 class RadarStation:
@@ -131,6 +132,14 @@ class RadarStation:
         """Validator to confirm that the"""
         return self.__validator
 
+    @property
+    def converters(self) -> ConverterCollection:
+        return self.__converters
+
+    @property
+    def data_loaders(self) -> DataLoaderCollection:
+        return self.__data_loaders
+
     def enu(self, ecefs: NDArray) -> NDArray:
         """Converts a set of ECEF states to local ENU coordinates using geocentric zenith."""
 
@@ -167,9 +176,9 @@ class RadarStation:
         power: Optional[float] = None,
         power_per_element: Optional[float] = None,
         frequency: Optional[float] = None,
-        converters: Optional[list[Converter]] = None,
+        converters: list[Converter] = [],
         validator: Optional[Validator] = None,
-        data_loaders: Optional[list[type[DataLoader]]] = None,
+        data_loaders: list[type[DataLoader]] = [],
     ) -> None:
 
         self.__station_id = station_id
@@ -191,47 +200,32 @@ class RadarStation:
         self.__power_per_element = power_per_element
         self.__frequency = frequency
         self.__validator = validator
-        self.__converters: dict[TargetFormat, Converter] = dict()
-        self.__data_loaders: dict[TargetFormat, type[DataLoader]] = dict()
+        self.__converters = ConverterCollection(converters)
+        self.__data_loaders = DataLoaderCollection(data_loaders)
 
-        if converters is not None:
-            for converter in converters:
-                self.add_converter(converter)
+    def is_data_compatible(self, path: Path) -> bool:
+        for loader in self.data_loaders.get_data_loaders():
+            if loader.validate(path):
+                return True
+        return False
 
-        if data_loaders is not None:
-            for data_loader in data_loaders:
-                self.add_data_loader(data_loader)
+    def available_target_formats(self, source_format: SourceFormat) -> list[TargetFormat]:
+        """
+        Get all target formats that is supported by the available converters for a specific source format
+        """
+        return self.converters.available_target_formats(source_format)
 
-    def get_converters(self) -> list[Converter]:
-        """Get all converters connected to this radar"""
-        return list(self.__converters.values())
-
-    def get_data_loaders(self) -> list[type[DataLoader]]:
-        """Get all data loaders connected to this radar"""
-        return list(self.__data_loaders.values())
-
-    def add_converter(self, converter: Converter) -> None:
-        """Add a converter to this radar"""
-        self.__converters[converter.target_format] = converter
-
-    def add_data_loader(self, data_loader: type[DataLoader]) -> None:
-        """Add a data loader to this radar"""
-        self.__data_loaders[data_loader.converted_format] = data_loader
-
-    def convert(self, path: Path, target_format: TargetFormat, dst: Path) -> list[Path] | None:
+    def convert(
+        self, path: Path, target_format: TargetFormat, dst: Path, progress: bool = False
+    ) -> list[Path] | None:
         """Convert data from this radar to a specific format"""
-
-        if self.__validator is not None:
-            if not self.__validator.validate(path):
+        if self.validator is not None:
+            if not self.validator.validate(path) and not self.validator.contains_format(path):
                 self.__logger.error("Source format not supported")
-                return None
-        else:
-            self.__logger.error("No source validator available, will try to convert anyways")
-
-        try:
-            return self.__converters[target_format].convert(path, dst)
-        except KeyError:
-            self.__logger.error("Not possible to convert to the wanted format, no converter available")
+            else:
+                return self.converters.convert(
+                    path, self.validator.format, target_format, dst, progress=progress
+                )
 
         return None
 
@@ -239,18 +233,5 @@ class RadarStation:
         self, path: Path, converted_format: Optional[TargetFormat] = None, experiment: Optional[ExpDef] = None
     ) -> DataLoader | None:
         """Load converted data from this radar"""
-        if converted_format is None:
-            for data_loader in self.__data_loaders.values():
-                if data_loader.validate(path):
-                    return data_loader(path, experiment)
-            self.__logger.error("Source format not supported")
-        else:
-            try:
-                if self.__data_loaders[converted_format].validate(path):
-                    return self.__data_loaders[converted_format](path, experiment)
-                else:
-                    self.__logger.error("Source format not supported")
-            except KeyError:
-                self.__logger.error("Not possible to load the wanted format, no loader available")
 
-        return None
+        return self.data_loaders.load_data(path, converted_format, experiment)

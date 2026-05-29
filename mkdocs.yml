@@ -88,6 +88,7 @@ nav:
   - Formats:
       - DRF: formats/format_drf.md
       - H5: formats/format_h5.md
+      - HDF5: formats/format_hdf5.md
       - Experiment definition: formats/format_exp.md
   - Reference: reference/
   - Examples:

@@ -4,7 +4,8 @@ from unittest.mock import Mock, PropertyMock
 
 import numpy as np
 
-from radardef.components import Converter, DataLoader, RadarStation, Validator
+from radardef import RadarStation
+from radardef.components import Converter, DataLoader, Validator
 from radardef.types import ExpDef, SourceFormat, TargetFormat
 
 
@@ -23,11 +24,14 @@ def validator_mock(format: SourceFormat, validator_func: Callable[[Path], bool])
     mock = Mock(spec=Validator)
     type(mock).format = PropertyMock(return_value=format)
     mock.validate = validator_func
+    mock.contains_format = validator_func
     return mock
 
 
 def converter_mock(
-    source_format: SourceFormat, target_format: TargetFormat, convert_func: Callable[[Path, Path], list[Path]]
+    source_format: SourceFormat,
+    target_format: TargetFormat,
+    convert_func: Callable[[Path, Path, bool], list[Path]],
 ):
     mock = Mock(spec=Converter)
     type(mock).source_format = PropertyMock(return_value=source_format)

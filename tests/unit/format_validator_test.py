@@ -7,7 +7,7 @@ from tests.unit import mocks
 
 
 class FormatCollectionTest(unittest.TestCase):
-    def test_register_validator(self):
+    def test_add_validator(self):
 
         # Eiscat validator
         validator_mock = mocks.validator_mock(SourceFormat.MATBZ2, lambda src: True)
@@ -19,7 +19,7 @@ class FormatCollectionTest(unittest.TestCase):
         self.assertNotIn(SourceFormat.MATBZ2, format_collection.list_formats())
 
         # register validator
-        format_collection._register_validator(validator_mock.format, validator_mock.validate)
+        format_collection.add_validator(validator_mock)
 
         # Validator should be available
         self.assertIn(SourceFormat.MATBZ2, format_collection.list_formats())
@@ -27,9 +27,8 @@ class FormatCollectionTest(unittest.TestCase):
     def test_simple_validator_mapping(self):
 
         validator_mock = mocks.validator_mock(SourceFormat.MATBZ2, lambda src: True)
-        radar_mock = mocks.radar_mock(validator=validator_mock)
 
-        format_collection = FormatCollection([radar_mock])
+        format_collection = FormatCollection([validator_mock])
 
         self.assertEqual(format_collection.get_format(Path()), SourceFormat.MATBZ2)
 
@@ -37,10 +36,8 @@ class FormatCollectionTest(unittest.TestCase):
 
         validator_eiscat_mock = mocks.validator_mock(SourceFormat.MATBZ2, lambda src: False)
         validator_mui_mock = mocks.validator_mock(SourceFormat.MUI, lambda src: True)
-        radar_mock = mocks.radar_mock(validator=validator_eiscat_mock)
-        radar_mock_2 = mocks.radar_mock(validator=validator_mui_mock)
 
-        format_collection = FormatCollection([radar_mock, radar_mock_2])
+        format_collection = FormatCollection([validator_eiscat_mock, validator_mui_mock])
 
         self.assertEqual(format_collection.get_format(Path()), SourceFormat.MUI)
 
@@ -48,10 +45,7 @@ class FormatCollectionTest(unittest.TestCase):
 
         validator_eiscat_mock = mocks.validator_mock(SourceFormat.MATBZ2, lambda src: False)
         validator_mui_mock = mocks.validator_mock(SourceFormat.MUI, lambda src: False)
-        radar_mock = mocks.radar_mock(validator=validator_eiscat_mock)
-        radar_mock_2 = mocks.radar_mock(validator=validator_mui_mock)
-
-        format_collection = FormatCollection([radar_mock, radar_mock_2])
+        format_collection = FormatCollection([validator_eiscat_mock, validator_mui_mock])
 
         self.assertEqual(format_collection.get_format(Path()), SourceFormat.UNKNOWN)
 
@@ -59,10 +53,8 @@ class FormatCollectionTest(unittest.TestCase):
 
         validator_eiscat_mock = mocks.validator_mock(SourceFormat.MATBZ2, lambda src: False)
         validator_mui_mock = mocks.validator_mock(SourceFormat.MUI, lambda src: False)
-        radar_mock = mocks.radar_mock(validator=validator_eiscat_mock)
-        radar_mock_2 = mocks.radar_mock(validator=validator_mui_mock)
 
-        format_collection = FormatCollection([radar_mock, radar_mock_2])
+        format_collection = FormatCollection([validator_eiscat_mock, validator_mui_mock])
 
         list_formats = format_collection.list_formats()
 
@@ -73,10 +65,8 @@ class FormatCollectionTest(unittest.TestCase):
 
         validator_eiscat_mock = mocks.validator_mock(SourceFormat.MATBZ2, lambda src: True)
         validator_mui_mock = mocks.validator_mock(SourceFormat.MUI, lambda src: False)
-        radar_mock = mocks.radar_mock(validator=validator_eiscat_mock)
-        radar_mock_2 = mocks.radar_mock(validator=validator_mui_mock)
 
-        format_collection = FormatCollection([radar_mock, radar_mock_2])
+        format_collection = FormatCollection([validator_eiscat_mock, validator_mui_mock])
 
         self.assertFalse(format_collection.is_format(Path(), SourceFormat.MUI))
         self.assertTrue(format_collection.is_format(Path(), SourceFormat.MATBZ2))

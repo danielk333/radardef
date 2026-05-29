@@ -4,7 +4,7 @@ from pyant.beam import Beam
 from pyant.models.measured import InterpMethods
 from pyant.types import Parameters
 
-from radardef.components.radar_station_template import RadarStation
+from radardef.radar_station import RadarStation
 from radardef.radar_stations.eiscat.beams.uhf import (
     eiscat_uhf_beam,
     eiscat_uhf_cassegrain_beam,

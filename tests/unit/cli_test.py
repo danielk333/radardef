@@ -48,15 +48,15 @@ class CliTest(unittest.TestCase):
 
         parser = convert_cli.parser_build(argparse.ArgumentParser())
 
-        args = parser.parse_args(["some/imaginary/path", "drf"])
-        with self.assertLogs("radardef.radar_def", level="ERROR") as logger:
-            convert_cli.main(args, None)
-            self.assertEqual(
-                logger.output, ["ERROR:radardef.radar_def:Input path/paths is not a valid file/directory"]
-            )
-            expected_output = "Path/paths was not valid\n"
-            out, _ = self.capsys.readouterr()
-            self.assertEqual(expected_output, out)
+        args = parser.parse_args(["some/imaginary/path", "h5"])
+        with self.assertLogs("radardef.cli.convert_cli", level="ERROR") as logger:
+            try:
+                convert_cli.main(args, None)
+                assert False
+            except ValueError:
+                self.assertEqual(
+                    logger.output, ["ERROR:radardef.cli.convert_cli:Input path is not a valid file/directory"]
+                )
 
     def test_convert_cli_convert_no_path(self):
 
@@ -78,9 +78,9 @@ class CliTest(unittest.TestCase):
 
         format_cli.main(args, None)
 
-        expected_output = f">{SourceFormat.MUI}\n>{SourceFormat.MATBZ2}\n\n"
         out, err = self.capsys.readouterr()
-        self.assertEqual(expected_output, out)
+        assert f">{SourceFormat.MUI}" in out
+        assert f">{TargetFormat.HDF5}" in out
 
     def test_format_cli_format(self):
 

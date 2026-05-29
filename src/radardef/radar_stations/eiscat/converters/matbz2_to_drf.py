@@ -5,7 +5,6 @@ the Converter template
 
 import configparser
 import logging
-import os
 from pathlib import Path
 from typing import Any, Optional
 
@@ -19,7 +18,8 @@ from radardef.radar_stations.eiscat.utils.eiscat_utils import (
     eiscat_load_file,
     eiscat_process,
 )
-from radardef.types import Boundparam, Expparam, Metaparam, SourceFormat, TargetFormat
+from radardef.radar_stations.eiscat.validators import MatBz2
+from radardef.types import Boundparam, Expparam, Metaparam, TargetFormat
 
 
 class MatBz2ToDrf(Converter):
@@ -29,13 +29,13 @@ class MatBz2ToDrf(Converter):
 
     def __init__(self) -> None:
         self.__compression = 0
-        super().__init__(SourceFormat.MATBZ2, TargetFormat.DRF)
+        super().__init__(MatBz2(), TargetFormat.DRF)
 
     def set_compression(self, level: int) -> None:
         """Set compression of the DRF conversion"""
         self.__compression = level
 
-    def convert(self, src: Path, dst: Path) -> list[Path]:
+    def convert_single_object(self, src: Path, dst: Path) -> list[Path]:
         """Convert file from mat.bz2 to DRF"""
         return [
             convert_eiscat_to_drf(
@@ -83,23 +83,19 @@ def convert_eiscat_to_drf(
     if not (src.is_dir() or src.is_file()):
         raise FileNotFoundError(str(src))
 
-    dst = Path(dst)
-    if not dst.is_dir():
-        os.makedirs(dst)
-        # raise FileNotFoundError(str(dst))
+    # load experiment info from first matlab file
+    files = eiscat_files(src)
+    n_files = len(files)
+    meta_first = eiscat_load_file(files[0])[0]
 
     if name is None:
         name = f"{src.name}_drf"
-    hdrf = dst / name
+
+    hdrf = Path(dst) / str(meta_first["date"]["file_start"])[0:10] / "converted_data" / name
+
     if hdrf.exists():
         raise FileExistsError(str(hdrf))
     hdrf.mkdir(parents=True, exist_ok=True)
-
-    files = eiscat_files(src)
-    n_files = len(files)
-
-    # load experiment info from first matlab file
-    meta_first = eiscat_load_file(files[0])[0]
 
     # create sample writer
     sample_writer = drf_wrapper.DigitalRFWriter(

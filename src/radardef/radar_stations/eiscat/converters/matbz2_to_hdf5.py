@@ -12,7 +12,8 @@ import numpy as np
 
 from radardef.components import Converter
 from radardef.radar_stations.eiscat.utils.eiscat_utils import eiscat_files, eiscat_load_file
-from radardef.types.formats import SourceFormat, TargetFormat
+from radardef.radar_stations.eiscat.validators import MatBz2
+from radardef.types.formats import TargetFormat
 
 PARBLOCK_ELEVATION = 8
 PARBLOCK_AZIMUTH = 9
@@ -64,9 +65,9 @@ class MatBz2ToHDF5(Converter):
 
     def __init__(self) -> None:
         self.__compression = 0
-        super().__init__(SourceFormat.MATBZ2, TargetFormat.HDF5)
+        super().__init__(MatBz2(), TargetFormat.HDF5)
 
-    def convert(self, src: Path, dst: Path) -> list[Path]:
+    def convert_single_object(self, src: Path, dst: Path) -> list[Path]:
         """
         Abstract method, convert from source format to target format
 
@@ -92,8 +93,6 @@ def convert_matbz2_to_hdf5(
         raise FileNotFoundError(str(src))
 
     dst = Path(dst)
-    if not dst.is_dir():
-        dst.mkdir(parents=True)
 
     # Sort files by timepoint
     files = eiscat_files(src)
@@ -101,8 +100,8 @@ def convert_matbz2_to_hdf5(
 
     # Get data from first file
     meta_first = eiscat_load_file(files[0])[0]
-    measurement_date = str(meta_first["date"]["file_start"])[0:10].replace("-", "")
-    measurement_time = str(meta_first["date"]["file_start"])[11:19].replace(":", "")
+    measurement_date = str(meta_first["date"]["file_start"])[0:10]
+    measurement_time = str(meta_first["date"]["file_start"])[11:19]
     measurement_ms = str(meta_first["date"]["file_start"])[20:]
 
     name = (
@@ -115,15 +114,19 @@ def convert_matbz2_to_hdf5(
         + "@"
         + meta_first["exp"]["chnl"]
         + "_"
-        + measurement_date
+        + measurement_date.replace("-", "")
         + "_"
-        + measurement_time
+        + measurement_time.replace(":", "")
         + "_"
         + measurement_ms
         + ".hdf5"
     )
 
-    file_path = dst / name
+    file_path = dst / measurement_date / "converted_data" / name
+
+    if not file_path.parent.is_dir():
+        file_path.parent.mkdir(parents=True)
+
     with h5py.File(str(file_path), "w") as hdf5_file:
         n_data_points = len(files)
 

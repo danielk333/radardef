@@ -3,7 +3,7 @@
 from pyant import Beam
 from pyant.types import Parameters
 
-from radardef.components.radar_station_template import RadarStation
+from radardef.radar_station import RadarStation
 from radardef.types import StationID
 
 from .beams import mu_array_beam, mu_interpolated_array_beam

@@ -43,7 +43,7 @@ pytest:
     - uv venv --python $VERSION
     - source .venv/bin/activate
     - uv pip install .[develop,digital_rf,tests]
-    - uv run pytest
+    - uv run pytest --cov
   coverage: /TOTAL.*? (100(?:\.0+)?\%|[1-9]?\d(?:\.\d+)?\%)$/
   rules:
     - !reference [.merge_request_rules, rules]

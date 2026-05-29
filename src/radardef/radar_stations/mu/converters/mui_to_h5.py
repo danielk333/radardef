@@ -19,10 +19,10 @@ from typing import Any
 
 import h5py
 import numpy as np
-from tqdm import tqdm
 
 from radardef.components.converter_template import Converter
-from radardef.types import SourceFormat, TargetFormat
+from radardef.radar_stations.mu.validators import MUI
+from radardef.types import TargetFormat
 
 logger = logging.getLogger(__name__)
 
@@ -30,24 +30,12 @@ logger = logging.getLogger(__name__)
 class MuiToH5(Converter):
     """MUI to H5 converter."""
 
-    logger = logging.getLogger(__name__)
-
     def __init__(self) -> None:
-        super().__init__(SourceFormat.MUI, TargetFormat.H5)
+        super().__init__(MUI(), TargetFormat.H5)
 
-    def convert(self, src: Path, dst: Path) -> list[Path]:
+    def convert_single_object(self, src: Path, dst: Path) -> list[Path]:
         """Convert MUI to h5, converted files are saved in dst"""
-        output_directories: list[Path] = []
-        if src.is_dir():
-            for file in tqdm(
-                src.iterdir(),
-                total=len([f for f in src.iterdir() if f.is_file()]),
-                desc=f"Converting files to h5: {src}",
-            ):
-                output_directories.append(convert_mui_to_h5(file, dst))
-        elif src.is_file():
-            output_directories.append(convert_mui_to_h5(src, dst))
-        return list(set(output_directories))
+        return [convert_mui_to_h5(src, dst)]
 
 
 def convert_mui_to_h5(
@@ -97,9 +85,9 @@ def convert_mui_to_h5(
         start_time = np.datetime_as_string(header_data["record_start_time"]).replace(":", ".")
         dst_dated = (
             Path(str(dst)).joinpath(
-                start_time[0:4],  # Year
-                start_time[5:7],  # Month
-                start_time[8:10],  # Day
+                start_time[0:10],  # YYYY-MM-DD
+                start_time[11:13] + "-00-00",  # HH-00-00
+                "converted_data",
             )
             if bool(dst)
             else Path("")

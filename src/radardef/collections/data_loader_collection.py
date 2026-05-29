@@ -8,7 +8,6 @@ from pathlib import Path
 from typing import Optional
 
 from radardef.components.data_loader_template import DataLoader
-from radardef.components.radar_station_template import RadarStation
 from radardef.types import ExpDef, TargetFormat
 
 
@@ -18,23 +17,20 @@ class DataLoaderCollection:
     provides a way to gather and provide loaders for many different formats in one place.
 
     Args:
-        radars: List of radars that the collections data loaders will be extracted from.
+        data_loaders: List of data loaders that the collection will be based upon.
 
     """
 
     __logger = logging.getLogger(__name__)
 
-    def __init__(self, radars: list[RadarStation]):
+    def __init__(self, data_loaders: list[type[DataLoader]]):
         self.__data_loaders: dict[TargetFormat, type[DataLoader]] = dict()
-
-        for radar in radars:
-            for data_loader in radar.get_data_loaders():
-                self._register_data_loader(data_loader)
+        self.add_data_loaders(data_loaders)
 
     def load_data(
         self,
         path: Path,
-        converted_format: TargetFormat = TargetFormat.UNKNOWN,
+        converted_format: Optional[TargetFormat] = None,
         experiment: Optional[ExpDef] = None,
     ) -> DataLoader | None:
         """
@@ -49,7 +45,7 @@ class DataLoaderCollection:
             A compatible dataloader if available, otherwise None
 
         """
-        if converted_format is TargetFormat.UNKNOWN:
+        if not converted_format or converted_format == TargetFormat.UNKNOWN:
             converted_format = self._get_load_format(path)
         try:
             return self.__data_loaders[converted_format](path, experiment)
@@ -69,6 +65,10 @@ class DataLoaderCollection:
         self.__logger.warning("Could not find any matching validator for the given format")
         return TargetFormat.UNKNOWN
 
-    def _register_data_loader(self, data_loader: type[DataLoader]) -> None:
-        """Register a data loader to the collection."""
-        self.__data_loaders[data_loader.converted_format] = data_loader
+    def add_data_loaders(self, data_loaders: list[type[DataLoader]]) -> None:
+        """Register data loaders to the collection."""
+        for data_loader in data_loaders:
+            self.__data_loaders[data_loader.converted_format] = data_loader
+
+    def get_data_loaders(self) -> list[type[DataLoader]]:
+        return list(self.__data_loaders.values())
