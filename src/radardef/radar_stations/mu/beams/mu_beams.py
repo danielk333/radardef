@@ -16,21 +16,34 @@ YAGI_AZ, YAGI_EL, YAGI_GAIN_DB = get_yagi_specs()
 ANTENNA_POS = get_antenna_pos()
 
 
-def yagi(cart_coord: CarthesianCoordinates_3xN, polarization: NDArray_2) -> NDArray_2xN:
+def yagi(cart_coord: CarthesianCoordinates_3xN, polarization: NDArray_2 | NDArray_2xN) -> NDArray_2xN:
+    """The Yagi antenna radiation pattern from [^1]
 
+    [^1]: Fukao, S., Sato, T., Tsuda, T., Kato, S., Wakasugi, K., Makihira, T., 1985.
+        The MU radar with active phased array system. I - Antenna and power amplifiers. II - In-house equipment.
+        Radio Sci. 20, 1155–1176. https://doi.org/10.1029/RS020i006p01155
+    """
+
+    yagi_peak_db = 7.24
     interp = scipy.interpolate.RegularGridInterpolator(
         (YAGI_AZ[0, :], YAGI_EL[:, 0]),
-        YAGI_GAIN_DB.T,
+        YAGI_GAIN_DB.T + yagi_peak_db,
         bounds_error=False,
     )
 
     sph = cart_to_sph(cart_coord, degrees=True)
-    G = 10 ** (interp(sph[:2, :].T) / 10.0)
+    # this is power gain and not field gain - devide dB by 2 to get field gain
+    G = 10 ** (interp(sph[:2, :].T) / 20.0)
     return np.stack([G, G], axis=0)
 
 
 def mu_array_beam() -> tuple[Array, ArrayParams]:
-    """A MU array beam"""
+    """MU array beam [^1]
+
+    [^1]: Fukao, S., Sato, T., Tsuda, T., Kato, S., Wakasugi, K., Makihira, T., 1985.
+        The MU radar with active phased array system. I - Antenna and power amplifiers. II - In-house equipment.
+        Radio Sci. 20, 1155–1176. https://doi.org/10.1029/RS020i006p01155
+    """
 
     beam = Array(
         antennas=ANTENNA_POS,

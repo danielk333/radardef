@@ -75,7 +75,6 @@ markdown_extensions:
 
 extra_javascript:
   - javascripts/config.js
-  - https://polyfill.io/v3/polyfill.min.js?features=es6
   - https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js
 
 nav:
@@ -96,3 +95,4 @@ nav:
       - Convert data: examples/convert_data.py
       - Load data: examples/load_data.py
       - Plot sky temperature: examples/plot_sky_temperature.py
+      - Antenna gain: examples/antenna_gain.py
