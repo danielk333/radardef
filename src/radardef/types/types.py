@@ -1,11 +1,14 @@
 """General types"""
 
-from dataclasses import dataclass, field
-from typing import NamedTuple, Optional
+from copy import deepcopy
+from dataclasses import dataclass, field, fields
+from typing import NamedTuple, Optional, TypeVar
 
 import numpy as np
 import numpy.typing as npt
 import scipy.constants
+
+P = TypeVar("P", bound="ExpDef")
 
 
 class BoundParams(NamedTuple):
@@ -55,3 +58,8 @@ class ExpDef:
         object.__setattr__(self, "sample_rate", 1 / (self.t_samp_usec * 1e-6))
         object.__setattr__(self, "wavelength", scipy.constants.c / (self.radar_frequency * 1e6))
         object.__setattr__(self, "ipp_samps", int(self.t_ipp_usec / self.t_samp_usec))
+
+    def copy(self: P, **modifications) -> P:
+        kwargs = {key.name: deepcopy(getattr(self, key.name)) for key in fields(self) if key.init}
+        kwargs.update(modifications)
+        return self.__class__(**kwargs)
