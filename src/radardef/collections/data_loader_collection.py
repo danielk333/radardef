@@ -31,7 +31,8 @@ class DataLoaderCollection:
         self,
         path: Path,
         converted_format: Optional[TargetFormat] = None,
-        experiment: Optional[ExpDef] = None,
+        exp_def: Optional[ExpDef] = None,
+        cache: bool = True,
     ) -> DataLoader | None:
         """
         Get a dataloader compatible with the file at the path.
@@ -40,15 +41,18 @@ class DataLoaderCollection:
             path: Path to file that should be loaded
             converted_format (optional): Format of the converted data,
                 if not specified the format will be found by the validator.
+            exp_def: Experiment definition to be able to decode the data.
+            cache:  If caching data should be enabled, will increase RAM usage.
 
         Returns:
             A compatible dataloader if available, otherwise None
 
         """
+
         if not converted_format or converted_format == TargetFormat.UNKNOWN:
             converted_format = self._get_load_format(path)
         try:
-            return self.__data_loaders[converted_format](path, experiment)
+            return self.__data_loaders[converted_format](path=path, exp_def=exp_def, cache=cache)
         except KeyError:
             self.__logger.info(
                 f"No dataloader available for format: {converted_format}, files affected: {path}"

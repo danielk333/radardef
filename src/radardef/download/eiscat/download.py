@@ -9,7 +9,8 @@ from typing import Any, Optional
 
 import requests
 from lxml import html
-from tqdm import tqdm
+
+from radardef.tools.mpi_tools import CommBar
 
 
 def format_bytes(size: float) -> str:
@@ -207,14 +208,11 @@ def download(
             file_size = int(response.headers.get("Content-Length", 0)) or bytes
             if logger:
                 logger.info(f"Download: zipfile: {zip_download}")
-            # Use tqdm to create a progress bar
+            # create a progress bar
             if progress:
-                pbar = tqdm(
+                pbar = CommBar(
                     desc="Downloading Eiscat raw data",
-                    total=file_size,
-                    unit="B",
-                    unit_scale=True,
-                    unit_divisor=1024,
+                    tot=file_size,
                 )
 
             with open(zip_download, "wb") as file:

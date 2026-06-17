@@ -18,7 +18,7 @@ class DataLoader:
     Args:
         path: Path to file containing the data.
         exp_def: Experiment definition to be able to decode the data.
-
+        cache:  If caching data should be enabled, will increase RAM usage.
 
     """
 
@@ -26,16 +26,27 @@ class DataLoader:
     validator: Validator[TargetFormat]
 
     @property
-    def experiment(self) -> ExpDef:
+    def exp_def(self) -> ExpDef:
         """Experiment specifications"""
-        if not self._experiment:
+        if not self._exp_def:
             raise ValueError("Experiment needs to be defined to be able to load data")
-        return self._experiment
+        return self._exp_def
 
     @property
     def path(self) -> Path:
         """Data path"""
         return self._path
+
+    @property
+    def cache_state(self) -> bool:
+        """Cache state"""
+        return self._cache_state
+
+    @cache_state.setter
+    def cache_state(self, value: bool) -> None:
+        """Set cache state"""
+        self._cache_state = value
+        self._setup_cache()
 
     @property
     @abstractmethod
@@ -53,9 +64,12 @@ class DataLoader:
         self,
         path: Path | str,
         exp_def: Optional[ExpDef] = None,
+        cache: bool = True,
     ):
-        self._experiment = exp_def
+        self._exp_def = exp_def
         self._path = Path(path)
+        self._cache_state = cache
+        self._setup_cache()
 
     @classmethod
     def validate(cls, path: Path) -> bool:
@@ -82,6 +96,7 @@ class DataLoader:
             vector_length (optional): Amount of samples to read from start_sample,
                 if not given all samples will be read
 
+
         Returns:
             Complex data from channel/channels. Shape for single channel: (vector_length,) otherwise: (channels, vector_length)
         """
@@ -93,5 +108,12 @@ class DataLoader:
         """
         Pointing data, data describing the radar pointing direction in spherical coordinates
 
+        """
+        pass
+
+    @abstractmethod
+    def _setup_cache(self) -> None:
+        """
+        Set up caching configuration
         """
         pass

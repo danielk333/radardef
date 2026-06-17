@@ -2,8 +2,6 @@ import logging
 from pathlib import Path
 from typing import Optional
 
-from tqdm import tqdm
-
 from radardef import RadarStation
 from radardef.collections import (
     ConverterCollection,
@@ -12,7 +10,6 @@ from radardef.collections import (
 )
 from radardef.components import DataLoader
 from radardef.radar_stations import ESR, TSDR, Eiscat3D, EiscatUHF, EiscatVHF, Mu, Pansy
-from radardef.tools.global_mpi import get_mpi
 from radardef.types import (
     DishDiameter,
     Eiscat3DLocation,
@@ -144,15 +141,6 @@ class RadarDef:
         target_format = self._validate_target_format(target_format)
 
         output = []
-        comm = get_mpi()
-        if progress and comm.rank == 0:
-            pbar = tqdm(
-                desc="Conversion ",
-                total=len(path_and_format),
-                position=comm.size + 1,
-            )
-        else:
-            pbar = None
 
         for path, format in path_and_format:
             ret = self.converter_collection.convert(
@@ -163,9 +151,6 @@ class RadarDef:
                 progress=progress,
             )
 
-            if pbar and comm.rank == 0:
-                pbar.update(1)
-
             if ret:
                 output += ret
 
@@ -175,7 +160,8 @@ class RadarDef:
         self,
         path: Path | str,
         converted_format: TargetFormat = TargetFormat.UNKNOWN,
-        experiment: Optional[ExpDef] = None,
+        exp_def: Optional[ExpDef] = None,
+        cache: bool = True,
     ) -> DataLoader | None:
         """
         Load data from a converted file
@@ -183,13 +169,18 @@ class RadarDef:
         Args:
             path: Path to file to load data from
             converted_format (optional): Converted format of the data,
+            exp_def (optional): Experiment definition to be able to decode the data.
+            cache (optional):  If caching data files should be enabled, will increase RAM usage.
 
         Returns:
             DataLoader
         """
 
         return self.data_loader_collection.load_data(
-            Path(path).resolve(), self._validate_target_format(converted_format), experiment
+            path=Path(path).resolve(),
+            converted_format=self._validate_target_format(converted_format),
+            exp_def=exp_def,
+            cache=cache,
         )
 
     def _validate_source_format(self, source_format: SourceFormat) -> SourceFormat:

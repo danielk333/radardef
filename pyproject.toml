@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "radardef"
-version = "0.4.8"
+version = "0.5.0"
 description = "Radar station specifications and data utilities"
 readme = { file = "README.md", content-type = "text/markdown" }
 authors = [
@@ -30,11 +30,12 @@ dependencies = [
   "numpy >= 1.19.5",
   "scipy >= 1.4.1",
   "h5py >= 3.4.0",
-  "tqdm >= 4.66.1",
+  "rich >= 15.0.0",
   "requests >= 2.28.2",
   "lxml",
   "astropy>=6",
-  "strenum ; python_version<'3.11'"
+  "strenum ; python_version<'3.11'",
+  "typing_extensions ; python_version<'3.11'"
 ]
 
 [project.urls]

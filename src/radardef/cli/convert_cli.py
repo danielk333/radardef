@@ -38,7 +38,7 @@ def main(args: argparse.Namespace, cli_logger: logging.Logger) -> None:
         print("No conversion to target format is present, use -l to list available formats")
         return
 
-    converted_data = radar_def.convert(args.files, target_format, args.output)
+    converted_data = radar_def.convert(args.files, target_format, args.output, progress=args.progress)
 
     if converted_data is None or len(converted_data) == 0:
         logger.error("Input path is not a valid file/directory")
@@ -80,6 +80,7 @@ def parser_build(parser: argparse.ArgumentParser) -> argparse.ArgumentParser:
         default=None,
         help="optional, format of source data, if specified all other formats will be ignored",
     )
+    parser.add_argument("-p", "--progress", action="store_true", help="enable progress bar")
 
     return parser
 

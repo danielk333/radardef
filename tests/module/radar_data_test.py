@@ -51,7 +51,7 @@ class RadarDataTest(unittest.TestCase):
 
             amount_of_files = len([x for x in dir.iterdir() if x.is_file()])
 
-            self.assertGreater(amount_of_files, 1)
+            assert amount_of_files == 1
 
     @pytest.mark.skipif(not importlib.util.find_spec("digital_rf"), reason="Digital RF is not installed")
     def test_eiscat_drf_convert(self):
@@ -92,7 +92,7 @@ class RadarDataTest(unittest.TestCase):
 
             amount_of_files = len([x for x in dir.iterdir() if x.is_file()])
 
-            self.assertGreater(amount_of_files, 1)
+            assert amount_of_files == 1
 
     # TODO: A test that checks that it is possible to read data from one file to the next
 
@@ -107,7 +107,7 @@ class RadarDataTest(unittest.TestCase):
 
         assert loader is not None
 
-        experiment_meta = loader.experiment
+        experiment_meta = loader.exp_def
 
         self.assertEqual(experiment_meta.name, "mu_experiment")
         self.assertEqual(experiment_meta.radar_frequency, 46.5)
@@ -161,7 +161,7 @@ class RadarDataTest(unittest.TestCase):
 
             assert loader is not None
 
-            experiment_meta = loader.experiment
+            experiment_meta = loader.exp_def
             self.assertEqual(experiment_meta.name, "mu_experiment")
             self.assertEqual(experiment_meta.radar_frequency, 46.5)
             self.assertEqual(experiment_meta.t_ipp_usec, 3120)
@@ -197,7 +197,7 @@ class RadarDataTest(unittest.TestCase):
 
         loader = radar_def.load_data(out[0], "drf")
 
-        experiment_meta = loader.experiment
+        experiment_meta = loader.exp_def
 
         self.assertEqual(experiment_meta.name, "leo_bpark_2.2")
         self.assertEqual(experiment_meta.radar_frequency, 500.5)
@@ -231,7 +231,7 @@ class RadarDataTest(unittest.TestCase):
         print(out)
         loader = radar_def.load_data(out[0], "hdf5")
 
-        experiment_meta = loader.experiment
+        experiment_meta = loader.exp_def
 
         self.assertEqual(experiment_meta.name, "leo_bpark_2.2")
         self.assertEqual(experiment_meta.radar_frequency, 500.5)

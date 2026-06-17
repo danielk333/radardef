@@ -4,10 +4,8 @@ import logging
 from abc import abstractmethod
 from pathlib import Path
 
-from tqdm import tqdm
-
 from radardef.components.validator_template import Validator
-from radardef.tools.global_mpi import get_mpi
+from radardef.tools.mpi_tools import CommBar, get_mpi
 from radardef.types import SourceFormat, TargetFormat
 
 
@@ -47,7 +45,7 @@ class Converter:
         """Converter source to target specification string"""
         return f"converter from {self.source_format} to {self.target_format}"
 
-    def convert(self, src: Path, dst: Path, progress: bool = False) -> list[Path]:
+    def convert(self, src: Path, dst: Path, progress: bool | CommBar = False) -> list[Path]:
         """
         Convert given file or directory.
 
@@ -64,24 +62,28 @@ class Converter:
         if len(conv_files) == 0:
             self.logger.warning(f"No convertable files at: {src}")
 
-        conv_files = conv_files[comm.rank : len(conv_files) : comm.size]
+        rank_conv_files = conv_files[comm.rank : len(conv_files) : comm.size]
         output = []
 
         if progress:
-            pbar = tqdm(
+            pbar = CommBar(
+                tot=len(conv_files),
                 desc=f"{str(self.source_format).upper()} to {str(self.target_format).upper()}",
-                total=len(conv_files),
-                position=comm.rank,
+                parent_progress=progress if isinstance(progress, CommBar) else None,
+                transient=isinstance(progress, CommBar),
             )
         else:
             pbar = None
 
-        for file in conv_files:
+        for file in rank_conv_files:
             output += self.convert_single_object(file, dst)
             if pbar:
                 pbar.update(1)
 
-        comm.barrier()
+        if pbar:
+            pbar.close()
+        else:
+            comm.barrier()
         return output
 
     @abstractmethod

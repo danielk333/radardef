@@ -64,7 +64,7 @@ assert data_loader is not None, "No data loader compatible with the file"
 # ---
 # Here some datapoints are available and a example on how to read samples from the data.
 
-print(f"Experiment definition: {data_loader.experiment}")
+print(f"Experiment definition: {data_loader.exp_def}")
 print(f"Epoch bounds: {data_loader.epoch_bounds}")
 print(f"Available channels: {data_loader.channels}")
 channel = data_loader.channels[0]
@@ -101,7 +101,7 @@ def rx_samples_per_pulse(data: npt.NDArray, exp: ExpDef):
 
 # $(\mathbf{A^T})^2$
 
-rti_data = np.abs(rx_samples_per_pulse(summed_data, data_loader.experiment).T) ** 2
+rti_data = np.abs(rx_samples_per_pulse(summed_data, data_loader.exp_def).T) ** 2
 
 # Plot measurement
 
@@ -114,13 +114,13 @@ ax.set_title(f"{raw_data.name} Range-Time-Intensity")
 # There is a sign of a object at the start of the measurement, to verify this this we can choose to only read
 # a certain amount of samples, lets say the first 500 ipps.
 
-summed_data = np.zeros((500 * data_loader.experiment.ipp_samps,), dtype=np.complex128)
+summed_data = np.zeros((500 * data_loader.exp_def.ipp_samps,), dtype=np.complex128)
 for chnl in data_loader.channels:
-    summed_data += data_loader.read(chnl, vector_length=500 * data_loader.experiment.ipp_samps)
+    summed_data += data_loader.read(chnl, vector_length=500 * data_loader.exp_def.ipp_samps)
 
 # $(\mathbf{A^T})^2$
 
-rti_data = np.abs(rx_samples_per_pulse(summed_data, data_loader.experiment).T) ** 2
+rti_data = np.abs(rx_samples_per_pulse(summed_data, data_loader.exp_def).T) ** 2
 
 # Plot measurement, here we can see a clear indication of a object.
 

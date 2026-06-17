@@ -17,7 +17,7 @@ class DataLoaderCollectionTest(unittest.TestCase):
             validator = mocks.validator_mock(TargetFormat.H5, lambda src: True)
 
             @property
-            def experiment(self):
+            def exp_def(self):
                 return mu_exp
 
         class DrfBParkLoader(DataLoader):
@@ -25,7 +25,7 @@ class DataLoaderCollectionTest(unittest.TestCase):
             validator = mocks.validator_mock(TargetFormat.DRF, lambda src: False)
 
             @property
-            def experiment(self):
+            def exp_def(self):
                 return leo_bpark_2_0
 
         class DrfMParkLoader(DataLoader):
@@ -33,7 +33,7 @@ class DataLoaderCollectionTest(unittest.TestCase):
             validator = mocks.validator_mock(TargetFormat.DRF, lambda src: False)
 
             @property
-            def experiment(self):
+            def exp_def(self):
                 return leo_mpark_2_1u
 
         data_loader_mocks = [H5MuLoader, DrfBParkLoader, DrfMParkLoader]
@@ -44,7 +44,7 @@ class DataLoaderCollectionTest(unittest.TestCase):
 
         assert loader is not None
 
-        self.assertEqual(loader.experiment.name, mu_exp.name)
+        self.assertEqual(loader.exp_def.name, mu_exp.name)
 
     def test_get_load_format(self):
 
@@ -53,7 +53,7 @@ class DataLoaderCollectionTest(unittest.TestCase):
             validator = mocks.validator_mock(TargetFormat.H5, lambda src: False)
 
             @property
-            def experiment(self):
+            def exp_def(self):
                 return mu_exp
 
         class DrfBParkLoader(DataLoader):
@@ -61,7 +61,7 @@ class DataLoaderCollectionTest(unittest.TestCase):
             validator = mocks.validator_mock(TargetFormat.DRF, lambda src: False)
 
             @property
-            def experiment(self):
+            def exp_def(self):
                 return leo_bpark_2_0
 
         class DrfMParkLoader(DataLoader):
@@ -69,7 +69,7 @@ class DataLoaderCollectionTest(unittest.TestCase):
             validator = mocks.validator_mock(TargetFormat.DRF, lambda src: True)
 
             @property
-            def experiment(self):
+            def exp_def(self):
                 return leo_mpark_2_1u
 
         data_loader_mocks = [H5MuLoader, DrfBParkLoader, DrfMParkLoader]

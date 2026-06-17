@@ -11,7 +11,6 @@ Conventions of the h5-format
 """
 
 import logging
-import os
 import warnings
 from io import BufferedReader
 from pathlib import Path
@@ -41,22 +40,6 @@ class MuiToH5(Converter):
 def convert_mui_to_h5(
     src: Path, dst: Path, experiment_name: str = "mw26x6", skip_existing: bool = False
 ) -> Path:
-    """
-    Converts MU raw data to HDF5.
-
-    Args:
-        src: Path to source directory (Eiscat raw data)
-        dst: Path to destination directory
-        experiment_name (optional): Experiment name
-        skip_existing (optional): Skip already existing files
-
-    Returns:
-        Path to generated HDF5 file directory
-
-    """
-
-    file_outputs_created = []
-
     try:
         file = open(src, "rb")
     except TypeError:
@@ -67,138 +50,137 @@ def convert_mui_to_h5(
             logger.critical("File not open in binary mode.")
             return Path("")
 
-    """
-    Constants declared
-    """
+    # Constants declared
     SKIP_AMOUNT = 4480
 
     byte = file.read(1)
     file.seek(-1, 1)
+
+    header_first: dict[Any, Any] = {}
+    header_last = {}
+
+    data_blocks = None
+    channel_list = []
+
     while byte != b"":
-        """
-        Initiating variables that will be used later.
-        """
-        header_data = _get_header_data(file)
-        block_amount = header_data["mu_head_1_to_24"][2]
-        observation_param_name = header_data["observation_param_name"]
-        # I replace ':' with a ., as windows cannot save files with ':' in their name.
-        start_time = np.datetime_as_string(header_data["record_start_time"]).replace(":", ".")
-        dst_dated = (
-            Path(str(dst)).joinpath(
-                start_time[0:10],  # YYYY-MM-DD
-                start_time[11:13] + "-00-00",  # HH-00-00
-                "converted_data",
-            )
-            if bool(dst)
-            else Path("")
-        )
-        """
-        Combined it will be something like "dst/20XX/YY/ZZ"
-        Using str(dst) to safeguard against dst being None
-        """
-        output_file_name = Path(dst_dated).joinpath(start_time + ".h5")
+        header = _get_header_data(file)
 
-        """
-        Creates the directories if not yet created.
-        """
-        if not dst_dated.name == "" and not Path(dst_dated).is_dir():
-            logger.debug(f"Creating file directories for location {dst_dated}")
-            os.makedirs(dst_dated)
+        if not header_first:
+            header_first = header
+        header_last = header
 
-        if bool(dst):
+        block_amount = header["mu_head_1_to_24"][2]
+
+        # Extract raw data
+        ipp_samples = 85
+        n_ipp = 512
+        channels = 25
+        mu_data = np.zeros((channels, n_ipp, ipp_samples), dtype="complex")
+
+        for x in range(0, block_amount):
             """
-            Checks if dst has been set and if the directory already exists.
-            If it does, it will check if the output file already exists. If it does and
-            the "skip existing files" flag is set, it will skip those datasets.
+            Block structure:
+
+                | 8 bit|  8 bit  | 16 bit |   32 bit x 512   |     32 bit x 512      |
+                | beam | channel | sample | 512 real numbers | 512 imaginary numbers |
+
+                Each block represents the x sample in each ipp for channel x,
+                when all samples for a channel has been read the next channel begins.
+                can be represented like:
+
+                block: 1    | sample 1 for ipp 1-512 in channel 1|
+                block: 2    | sample 2 for ipp 1-512 in channel 1|
+                .......
+                block: 85   | sample 85 for ipp 1-512 in channel 1|
+                block: 86   | sample 1 for ipp 1-512 in channel 2|
+
+
+            NOTE: each block ends with 380 blank bytes and should be skipped
             """
-            # If the file already exists and you want to skip it
-            if Path(output_file_name).is_file() and skip_existing:
-                logger.debug(f'Skip existing set and file was found. Skipping file "{output_file_name}".')
-                # Skip ahead to the next block
-                file.seek(block_amount * SKIP_AMOUNT, 1)
-                byte = file.read(1)
-                file.seek(-1, 1)
-                continue
 
-        if observation_param_name.strip() != experiment_name:
-            logger.critical(
-                f'Experiment name "{experiment_name}" was not '
-                + f'equal to observation parameter name "{observation_param_name}". Exiting.'
-            )
-            break
+            beam = np.fromfile(file, dtype=">i1", count=1)[0]
+            channel = np.fromfile(file, dtype=">i1", count=1)[0]  # alt: (x // ipp_samples) % channels
+            ipp_sample = np.fromfile(file, dtype=">i2", count=1)[0]  # x % ipp_samples
 
-        """
-        Opening the file properly so it closes if it crashes.
-        """
-        with h5py.File(output_file_name, "w") as h5file:
-            """
-            Allocating variables to hold the data.
-            mu_data = [channel][ipp][sample]
-            """
-            ipp_samples = 85
-            n_ipp = 512
-            channels = 25
-            channel_list = []
-            mu_data = np.zeros((channels, n_ipp, ipp_samples), dtype="complex")
+            real_numbers = np.fromfile(file, dtype=">f4", count=n_ipp)
+            complex_numbers = np.fromfile(file, dtype=">f4", count=n_ipp)
+            data = real_numbers + 1j * complex_numbers
 
-            for x in range(0, block_amount):
-                """
-                Block structure:
+            mu_data[channel - 1, :, ipp_sample - 1] = data
 
-                    | 8 bit|  8 bit  | 16 bit |   32 bit x 512   |     32 bit x 512      |
-                    | beam | channel | sample | 512 real numbers | 512 imaginary numbers |
+            if channel not in channel_list:
+                channel_list.append(channel)
+            file.seek(380, 1)
 
-                    Each block represents the x sample in each ipp for channel x,
-                    when all samples for a channel has been read the next channel begins.
-                    can be represented like:
-
-                    block: 1    | sample 1 for ipp 1-512 in channel 1|
-                    block: 2    | sample 2 for ipp 1-512 in channel 1|
-                    .......
-                    block: 85   | sample 85 for ipp 1-512 in channel 1|
-                    block: 86   | sample 1 for ipp 1-512 in channel 2|
-
-
-                NOTE: each block ends with 380 blank bytes and should be skipped
-                """
-
-                beam = np.fromfile(file, dtype=">i1", count=1)[0]
-                channel = np.fromfile(file, dtype=">i1", count=1)[0]  # alt: (x // ipp_samples) % channels
-                ipp_sample = np.fromfile(file, dtype=">i2", count=1)[0]  # x % ipp_samples
-
-                real_numbers = np.fromfile(file, dtype=">f4", count=n_ipp)
-                complex_numbers = np.fromfile(file, dtype=">f4", count=n_ipp)
-                data = real_numbers + 1j * complex_numbers
-
-                mu_data[channel - 1, :, ipp_sample - 1] = data
-
-                if channel not in channel_list:
-                    channel_list.append(channel)
-                file.seek(380, 1)
-
-            """
-            Adding all header data as attributes to the hdf5 file.
-            """
-            for key, val in header_data.items():
-                logger.debug(f"Setting file attribute {key} to {val}")
-                if type(val) == np.datetime64:
-                    h5file.attrs[key] = str(np.datetime_as_string(val))
-                else:
-                    h5file.attrs[key] = val
-            h5file.attrs["filename"] = src.name
-            h5file.attrs["date"] = str(np.datetime_as_string(header_data["record_start_time"]))
-            h5file.attrs["path"] = str(src.resolve())
-
-            logger.debug("Creating dataset data, and saving to file")
-            h5file.create_dataset("data", data=mu_data)
-            h5file.create_dataset("rx_channels", data=channel_list)
-            file_outputs_created.append(str(output_file_name))
+        # Add to previous data blocks, concatenate over ipp axis
+        if data_blocks is None:
+            data_blocks = mu_data
+        else:
+            data_blocks = np.concatenate((data_blocks, mu_data), axis=1)
 
         byte = file.read(1)
         file.seek(-1, 1)
 
     logger.debug("Reached EOF, exiting loop and closing file")
     file.close()
+
+    observation_param_name = header_first["observation_param_name"]
+    # I replace ':' with a ., as windows cannot save files with ':' in their name.
+    start_time = np.datetime_as_string(header_first["record_start_time"]).replace(":", ".")
+    dst_dated = (
+        Path(str(dst)).joinpath(
+            start_time[0:10],  # YYYY-MM-DD
+            start_time[11:13] + "-00-00",  # HH-00-00
+            "converted_data",
+        )
+        if bool(dst)
+        else Path("")
+    )
+    """
+    Combined it will be something like "dst/20XX/YY/ZZ"
+    Using str(dst) to safeguard against dst being None
+    """
+    output_file_name = dst_dated.joinpath(start_time + ".h5")
+
+    """
+    Creates the directories if not yet created.
+    """
+    if not dst_dated.name == "" and not dst_dated.is_dir():
+        logger.debug(f"Creating file directories for location {dst_dated}")
+        dst_dated.mkdir(parents=True, exist_ok=True)
+
+    if observation_param_name.strip() != experiment_name:
+        logger.critical(
+            f'Experiment name "{experiment_name}" was not '
+            + f'equal to observation parameter name "{observation_param_name}". Exiting.'
+        )
+        raise ValueError(
+            f'Experiment name "{experiment_name}" was not '
+            + f'equal to observation parameter name "{observation_param_name}"'
+        )
+
+    """
+    Opening the file properly so it closes if it crashes.
+    """
+    with h5py.File(output_file_name, "w") as h5file:
+        """
+        Adding all header data as attributes to the hdf5 file.
+        """
+        for key, val in header_first.items():
+            logger.debug(f"Setting file attribute {key} to {val}")
+            if type(val) == np.datetime64:
+                h5file.attrs[key] = str(np.datetime_as_string(val))
+            else:
+                h5file.attrs[key] = val
+        h5file.attrs["record_end_time"] = str(np.datetime_as_string(header_last["record_end_time"]))
+        h5file.attrs["filename"] = src.name
+        h5file.attrs["date"] = str(np.datetime_as_string(header_first["record_start_time"]))
+        h5file.attrs["path"] = str(src.resolve())
+
+        logger.debug("Creating dataset data, and saving to file")
+        h5file.create_dataset("data", data=data_blocks)
+        h5file.create_dataset("rx_channels", data=channel_list)
+
     return dst_dated
 
 

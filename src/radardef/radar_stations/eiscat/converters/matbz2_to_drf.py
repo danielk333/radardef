@@ -9,7 +9,6 @@ from pathlib import Path
 from typing import Any, Optional
 
 import numpy as np
-from tqdm import tqdm
 
 import radardef.radar_stations.eiscat.utils.digitalrf_wrapper as drf_wrapper
 from radardef.components.converter_template import Converter
@@ -164,9 +163,6 @@ def convert_eiscat_to_drf(
     if logger:
         logger.info(f"writing DRF from {n_files} input files")
 
-    if progress:
-        pbar = tqdm(desc=f"Converting files to digital_rf: {src}", total=n_files)
-
     # processing loop
     for error in eiscat_process(
         files,
@@ -179,12 +175,6 @@ def convert_eiscat_to_drf(
         if error:
             if logger:
                 logger.debug(error)
-
-        if progress:
-            pbar.update(1)
-
-    if progress:
-        pbar.close()
 
     if logger:
         logger.info("Done writing DRF files")

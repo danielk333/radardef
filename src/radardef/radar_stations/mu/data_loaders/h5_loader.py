@@ -15,13 +15,20 @@ import numpy as np
 import numpy.typing as npt
 
 from radardef.components import DataLoader
-from radardef.radar_stations.mu.experiments import mu_exp
+from radardef.radar_stations.mu.experiments import mu_exp, mu_exp_large
 from radardef.radar_stations.mu.validators import H5
 from radardef.types import BoundParams, ExpDef, Pointing, TargetFormat
 
 
 class H5Loader(DataLoader):
-    """Simplifies the way to load .h5 files converted from MUI"""
+    """
+    Simplifies the way to load .h5 files converted from MUI
+
+    Args:
+        path: Path to file containing the data.
+        exp_def: Experiment definition to be able to decode the data.
+        cache:  If caching data files should be enabled, will increase RAM usage.
+    """
 
     __logger = logging.getLogger(__name__)
 
@@ -36,37 +43,64 @@ class H5Loader(DataLoader):
     @property
     def channels(self) -> list[int] | list[str]:
         """All available channels"""
-        return self.experiment.rx_channels
+        return self.exp_def.rx_channels
 
     def __init__(
         self,
         path: Path | str,
         exp_def: Optional[ExpDef] = None,
+        cache: bool = True,
     ) -> None:
-        """Loads a path to the dataloader, extracting metadata and other important specifications
 
-        Args:
-            path: path to data file
-
-        """
-
-        if not exp_def:
-            exp_def = mu_exp
-
-        super().__init__(path, exp_def)
+        self._path = Path(path)
 
         if self.path.is_dir():
             self.files = self._get_all_files_from_dir(self.path)
-            self.__epoch_bounds, self.__sample_bounds = self._extract_bounds_from_list(self.files)
         else:
             self.files = [self.path]
+
+        if not exp_def:
+            exp_def = self.get_experiment(self.files)
+
+        super().__init__(self.path, exp_def, cache)
+
+        if self.path.is_dir():
+            self.__epoch_bounds, self.__sample_bounds = self._extract_bounds_from_list(self.files)
+        else:
             self.__epoch_bounds, self.__sample_bounds = self._extract_bounds(self.path)
 
-        if len(self.__sample_bounds) != len(self.experiment.rx_channels):
+        if len(self.__sample_bounds) != len(self.exp_def.rx_channels):
             raise AttributeError(
-                f"Amount of channels in experiment definition: {len(self.experiment.rx_channels)} \
+                f"Amount of channels in experiment definition: {len(self.exp_def.rx_channels)} \
                 is not the same as the amount of channels in the data file: {len(self.__sample_bounds)}"
             )
+
+    def get_experiment(self, files: list[Path]) -> ExpDef:
+        if len(files) >= 2:
+            n_ipps_start = h5py.File(files[0], "r")["data"].shape[1]
+            # Choosing second last since the last file is ok to be shorter than the rest
+            n_ipps_end = h5py.File(files[-2], "r")["data"].shape[1]
+
+            if n_ipps_start != n_ipps_end:
+                raise Exception("Files in this directory are of different shape, not possible to load")
+
+            elif n_ipps_start == (12 * 512):
+                return mu_exp
+            elif n_ipps_start == (14 * 512):
+                return mu_exp_large
+            else:
+                raise Exception("No experiment definition supporting the samples per file")
+        else:
+            n_ipps = h5py.File(files[0], "r")["data"].shape[1]
+            if n_ipps == (12 * 512):
+                return mu_exp
+            elif n_ipps == (14 * 512):
+                return mu_exp_large
+            elif n_ipps < (12 * 512):
+                # A small file works with any exp defintion
+                return mu_exp
+            else:
+                raise Exception("No experiment definition supporting the samples per file")
 
     def bounds(self, channel: str | int) -> tuple[int, int]:
         """Sample bounds of the specific channel
@@ -130,8 +164,8 @@ class H5Loader(DataLoader):
 
         if self.path.is_dir():
             if start_sample is not None:
-                start_file = math.floor(start_sample / self.experiment.samples_per_file)
-                index = start_sample % self.experiment.samples_per_file
+                start_file = math.floor(start_sample / self.exp_def.samples_per_file)
+                index = start_sample % self.exp_def.samples_per_file
             else:
                 start_file = 0
                 index = 0
@@ -139,55 +173,90 @@ class H5Loader(DataLoader):
 
             if vector_length is not None:
                 num_files = math.ceil(
-                    ((start_sample % self.experiment.samples_per_file) + vector_length)
-                    / self.experiment.samples_per_file
+                    ((start_sample % self.exp_def.samples_per_file) + vector_length)
+                    / self.exp_def.samples_per_file
                 )
                 samples = vector_length
             else:
                 num_files = len(self.files)
-                samples = self.bounds(self.experiment.rx_channels[0])[1]
+                samples = self.bounds(self.exp_def.rx_channels[0])[1]
 
             files = self.files[start_file : start_file + num_files]
-            padded_data = np.empty((0,), dtype=np.complex128)
+            data = np.empty((0,), dtype=np.complex128)
+            if len(files) > 1 or self.cache_state:
+                for i, file in enumerate(files):
+                    data_block = self.get_data(
+                        file, channel if not isinstance(channel, list) else tuple(channel)
+                    )
 
-            for i, file in enumerate(files):
-                data = self.get_data(file, channel if not isinstance(channel, list) else tuple(channel))
+                    if i == 0:
+                        data = data_block
+                    else:
+                        data = np.concatenate((data, data_block), axis=-1)
 
-                if i == 0:
-                    padded_data = self._flatten_and_zero_pad(data)
+                if data.ndim >= 2:
+                    return data[:, index : index + samples]
                 else:
-                    padded_data = np.concatenate((padded_data, self._flatten_and_zero_pad(data)), axis=-1)
-
-            if padded_data.ndim >= 2:
-                return padded_data[:, index : index + samples]
+                    return data[index : index + samples]
             else:
-                return padded_data[index : index + samples]
+                start_ipp = index // self.exp_def.ipp_samps
+                end_ipp = (index + samples) // self.exp_def.ipp_samps + 1
+                data = self.get_data(
+                    files[0], channel if not isinstance(channel, list) else tuple(channel), start_ipp, end_ipp
+                )
+
+                index = index % self.exp_def.ipp_samps
+
+                if data.ndim >= 2:
+                    return data[:, index : index + samples]
+                else:
+                    return data[index : index + samples]
         else:
-            data = self.get_data(self.path, channel if not isinstance(channel, list) else tuple(channel))
+            if self.cache_state:
+                data_block = self.get_data(
+                    self.path, channel if not isinstance(channel, list) else tuple(channel)
+                )
 
-            padded_data = self._flatten_and_zero_pad(data)
-
-            if start_sample is None and vector_length is None:
-                return padded_data
-            elif start_sample is not None and vector_length is not None:
-                if data.ndim > 1:
-                    return padded_data[:, start_sample : start_sample + vector_length]
+                if start_sample is None and vector_length is None:
+                    return data_block
+                elif start_sample is not None and vector_length is not None:
+                    if data_block.ndim > 1:
+                        return data_block[:, start_sample : start_sample + vector_length]
+                    else:
+                        return data_block[start_sample : start_sample + vector_length]
+                elif start_sample is None and vector_length is not None:
+                    if data_block.ndim > 1:
+                        return data_block[:, 0:vector_length]
+                    else:
+                        return data_block[0:vector_length]
                 else:
-                    return padded_data[start_sample : start_sample + vector_length]
-            elif start_sample is None and vector_length is not None:
-                if data.ndim > 1:
-                    return padded_data[:, 0:vector_length]
-                else:
-                    return padded_data[0:vector_length]
+                    if data_block.ndim > 1:
+                        return data_block[:, start_sample:]
+                    else:
+                        return data_block[start_sample:]
             else:
-                if data.ndim > 1:
-                    return padded_data[:, start_sample:]
-                else:
-                    return padded_data[start_sample:]
+                if start_sample is None:
+                    start_sample = 0
+                if vector_length is None:
+                    vector_length = self.bounds(self.exp_def.rx_channels[0])[1]
+                start_ipp = start_sample // self.exp_def.ipp_samps
+                end_ipp = (start_sample + vector_length) // self.exp_def.ipp_samps + 1
+                data_block = self.get_data(
+                    self.path,
+                    channel if not isinstance(channel, list) else tuple(channel),
+                    start_ipp,
+                    end_ipp,
+                )
 
-    @functools.lru_cache(maxsize=10)
-    def get_data(
-        self, path: Path, channel: Optional[str | int | tuple[int] | tuple[str]] = None
+                index = start_sample % self.exp_def.ipp_samps
+                return data_block[index : index + vector_length]
+
+    def _get_data(
+        self,
+        path: Path,
+        channel: Optional[str | int | tuple[int] | tuple[str]] = None,
+        start_ipp: Optional[int] = None,
+        end_ipp: Optional[int] = None,
     ) -> npt.NDArray:
 
         chnl: int | npt.NDArray | None
@@ -204,12 +273,17 @@ class H5Loader(DataLoader):
             chnl = None
 
         with h5py.File(str(path), "r") as h5file:
-            if chnl is not None:
-                data = h5file["data"][chnl - 1]
-            else:
-                data = h5file["data"][:]
+            if start_ipp is None:
+                start_ipp = 0
+            if end_ipp is None:
+                end_ipp = h5file["data"].shape[1]
 
-        return data
+            if chnl is not None:
+                data = h5file["data"][chnl - 1, start_ipp:end_ipp]
+            else:
+                data = h5file["data"][:, start_ipp:end_ipp]
+
+        return self._flatten_and_zero_pad(data)
 
     def pointing(self, sample: int) -> Pointing:
         """Pointing data, data describing the radar pointing direction in spherical coordinates"""
@@ -227,20 +301,20 @@ class H5Loader(DataLoader):
         """
         pulses = data.shape[-2]
         rx_samples = data.shape[-1]
-        rx_start_samp = int(self.experiment.t_rx_start_usec / self.experiment.t_samp_usec)
+        rx_start_samp = int(self.exp_def.t_rx_start_usec / self.exp_def.t_samp_usec)
 
         if data.ndim <= 2:
-            padded_data = np.zeros((pulses, self.experiment.ipp_samps), dtype=np.complex128)
+            padded_data = np.zeros((pulses, self.exp_def.ipp_samps), dtype=np.complex128)
 
             padded_data[:, rx_start_samp : rx_start_samp + rx_samples] = data
 
             return padded_data.reshape(-1)
         else:
             channels = data.shape[0]
-            padded_data = np.zeros((channels, pulses, self.experiment.ipp_samps), dtype=np.complex128)
+            padded_data = np.zeros((channels, pulses, self.exp_def.ipp_samps), dtype=np.complex128)
             padded_data[:, :, rx_start_samp : rx_start_samp + rx_samples] = data
 
-            return padded_data.reshape(channels, pulses * self.experiment.ipp_samps)
+            return padded_data.reshape(channels, pulses * self.exp_def.ipp_samps)
 
     def _get_all_files_from_dir(self, path: Path) -> list[Path]:
         """Get all files available in dir"""
@@ -277,9 +351,9 @@ class H5Loader(DataLoader):
             for j, data in enumerate(h5file["data"]):
                 channel = j + 1
 
-                if channel in self.experiment.rx_channels:
+                if channel in self.exp_def.rx_channels:
                     pulses = len(data)
-                    ipp_length = int(self.experiment.t_ipp_usec / self.experiment.t_samp_usec)
+                    ipp_length = int(self.exp_def.t_ipp_usec / self.exp_def.t_samp_usec)
                     sample_bounds[channel] = (0, pulses * ipp_length)
                 else:
                     self.__logger.debug(
@@ -324,10 +398,10 @@ class H5Loader(DataLoader):
                 previous_end_point = str(h5file.attrs["record_end_time"])[0:26]
 
                 # Calculate channel sample bounds
-                ipp_length = int(self.experiment.t_ipp_usec / self.experiment.t_samp_usec)
+                ipp_length = int(self.exp_def.t_ipp_usec / self.exp_def.t_samp_usec)
                 for j, data in enumerate(h5file["data"]):
                     channel = j + 1
-                    if channel in self.experiment.rx_channels:
+                    if channel in self.exp_def.rx_channels:
                         min_max = (0, len(data) * ipp_length)
                         if channel not in sample_bounds:
                             sample_bounds[channel] = min_max
@@ -349,6 +423,28 @@ class H5Loader(DataLoader):
         """is channel present in the data"""
 
         if isinstance(chnl, list) or isinstance(chnl, np.ndarray):
-            return set(chnl).issubset(self.experiment.rx_channels)
+            return set(chnl).issubset(self.exp_def.rx_channels)
         else:
-            return chnl in self.experiment.rx_channels
+            return chnl in self.exp_def.rx_channels
+
+    def _setup_cache(self) -> None:
+        """Setup cache"""
+
+        if self.cache_state:
+            self.get_data = functools.lru_cache(maxsize=2)(self._get_data)
+        else:
+            self.get_data = self._get_data  # type: ignore[assignment]
+
+    def __getstate__(self) -> dict:
+        """
+        Prepare object for e.g pickling by removing the decorated functions (not supported by pickle)
+        """
+        state = self.__dict__.copy()
+        if "get_data" in state:
+            del state["get_data"]
+        return state
+
+    def __setstate__(self, state: dict) -> None:
+        """Restore object after unpickling"""
+        self.__dict__.update(state)
+        self._setup_cache()

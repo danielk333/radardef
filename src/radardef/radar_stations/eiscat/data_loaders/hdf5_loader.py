@@ -47,6 +47,11 @@ class HDF5Loader(DataLoader):
           └─ResourceID
     ```
 
+    Args:
+        path: Path to file containing the data.
+        exp_def: Experiment definition to be able to decode the data.
+        cache:  (Not yet supported) If caching data files should be enabled, will increase RAM usage.
+
     """
 
     __logger = logging.getLogger(__name__)
@@ -78,25 +83,28 @@ class HDF5Loader(DataLoader):
     @property
     def channels(self) -> list[int] | list[str]:
         """All available channels"""
-        return self.experiment.rx_channels
+        return self.exp_def.rx_channels
 
     def __init__(
         self,
         path: Path | str,
         exp_def: Optional[ExpDef] = None,
+        cache: bool = False,
     ) -> None:
-        super().__init__(path, exp_def)
-        if not self._experiment:
+        super().__init__(path, exp_def, cache)
+        if not self._exp_def:
             file = self._open_hdf5_file(self.path)
             name = file[self.PORTALDBREFERENCE][self.EXPERIMENTNAME][()][0].decode()
             file.close
 
             expname, expvers, owner = self._expinfo_split(name)
-            self._experiment = get_experiment(group=expname, version=expvers)
+            self._exp_def = get_experiment(group=expname, version=expvers)
 
         self.__dumps, self.__samples_per_dump = self._get_data_size(self.path)
         self.__epoch_bounds = self._extract_bounds(self.path)
         self.__pointing = self._extract_pointing(self.path)
+        if cache:
+            self.__logger.info("Cache is requested but is not yet supported by this data loader")
 
     def bounds(self, channel: str | int) -> tuple[int, int]:
         """Sample bounds of the specific channel
@@ -140,9 +148,9 @@ class HDF5Loader(DataLoader):
         """
         if channel:
             if isinstance(channel, list):
-                if len(channel) > len(self.experiment.rx_channels):
+                if len(channel) > len(self.exp_def.rx_channels):
                     raise Exception(
-                        f"More channels requested than available, requested: {channel}, available: {self.experiment.rx_channels}"
+                        f"More channels requested than available, requested: {channel}, available: {self.exp_def.rx_channels}"
                     )
                 if len(channel) == 1:
                     channel = channel[0]
@@ -203,15 +211,15 @@ class HDF5Loader(DataLoader):
         file = self._open_hdf5_file(path)
 
         if (
-            self.experiment.radar_frequency
+            self.exp_def.radar_frequency
             != file[self.DATA]["ParBlock"]["ParBlock"][0][self.PARBLOCK_FREQUENCY]
         ):
             self.__logger.debug(
                 f"Radar frequency in experiment does not match with frequency in measurement file.\
-                exp def: {self.experiment.radar_frequency} \
+                exp def: {self.exp_def.radar_frequency} \
                 measurement file: {file[self.DATA]['ParBlock']['ParBlock'][0][self.PARBLOCK_FREQUENCY]}"
             )
-        if self.experiment.rx_channels[0] != file[self.PORTALDBREFERENCE][self.DATASTREAM][0].decode():
+        if self.exp_def.rx_channels[0] != file[self.PORTALDBREFERENCE][self.DATASTREAM][0].decode():
             raise ValueError("Rx channel does not match with channel in measurement file")
 
         start_time_sec = (
@@ -270,4 +278,10 @@ class HDF5Loader(DataLoader):
 
     def _is_channel_present(self, chnl: str | int) -> bool:
         """is channel present in the data"""
-        return chnl in self.experiment.rx_channels
+        return chnl in self.exp_def.rx_channels
+
+    def _setup_cache(self) -> None:
+        """
+        Set up caching configuration
+        """
+        pass

@@ -230,8 +230,14 @@ class RadarStation:
         return None
 
     def load_data(
-        self, path: Path, converted_format: Optional[TargetFormat] = None, experiment: Optional[ExpDef] = None
+        self,
+        path: Path,
+        converted_format: Optional[TargetFormat] = None,
+        exp_def: Optional[ExpDef] = None,
+        cache: bool = True,
     ) -> DataLoader | None:
         """Load converted data from this radar"""
 
-        return self.data_loaders.load_data(path, converted_format, experiment)
+        return self.data_loaders.load_data(
+            path=path, converted_format=converted_format, exp_def=exp_def, cache=cache
+        )

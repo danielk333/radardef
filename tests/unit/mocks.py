@@ -42,14 +42,14 @@ def converter_mock(
 
 def data_loader_mock(
     converted_format: TargetFormat,
-    experiment: ExpDef,
+    exp_def: ExpDef,
     validate_func: Callable[[Path], bool],
     read_func: Callable[[Path], np.ndarray],
 ):
 
     mock = Mock(spec=DataLoader)
     type(mock).converted_format = PropertyMock(return_value=converted_format)
-    type(mock).experiment = PropertyMock(return_value=experiment)
+    type(mock).exp_def = PropertyMock(return_value=exp_def)
     mock.validate = validate_func
     mock.load_data = read_func
     return mock

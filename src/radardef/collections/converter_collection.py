@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Iterator
 
 from radardef.components.converter_template import Converter
+from radardef.tools.mpi_tools import CommBar
 from radardef.types import SourceFormat, TargetFormat
 
 
@@ -46,7 +47,7 @@ class ConverterCollection:
         source_format: SourceFormat,
         target_format: TargetFormat,
         output_dir: Path,
-        progress: bool = False,
+        progress: bool | CommBar = False,
     ) -> list[Path] | None:
         """
         Converts the file/directory at the given path from a source format to a target format,
