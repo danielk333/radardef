@@ -17,6 +17,7 @@ leo_sat_1_0l = ExpDef(
     samples_per_file=12800000,
     rx_channels=["uhf"],
     tx_channel="uhf",
+    fir_filter="b414d15_gaus",  # TODO: Apply correct filter
 )
 
 leo_sat_1_0u = ExpDef(
@@ -35,4 +36,5 @@ leo_sat_1_0u = ExpDef(
     samples_per_file=12800000,
     rx_channels=["uhf"],
     tx_channel="uhf",
+    fir_filter="b414d15_gaus",  # TODO: Apply correct filter
 )

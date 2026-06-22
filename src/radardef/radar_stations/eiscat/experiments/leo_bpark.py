@@ -17,6 +17,7 @@ leo_bpark_2_0 = ExpDef(
     samples_per_file=12800000,
     rx_channels=["uhf"],
     tx_channel="uhf",
+    fir_filter="b414d15_gaus",  # TODO: Apply correct filter
 )
 leo_bpark_2_0u = ExpDef(
     name="leo_bpark_2.0u",
@@ -34,6 +35,7 @@ leo_bpark_2_0u = ExpDef(
     samples_per_file=12800000,
     rx_channels=["uhf"],
     tx_channel="uhf",
+    fir_filter="b414d15_gaus",  # TODO: Apply correct filter
 )
 
 
@@ -53,6 +55,7 @@ leo_bpark_2_1u = ExpDef(
     samples_per_file=12800000,
     rx_channels=["uhf"],
     tx_channel="uhf",
+    fir_filter="b414d15_gaus",  # TODO: Apply correct filter
 )
 
 # note : ambiguous wrt channel - could be 32m or 42m
@@ -72,6 +75,7 @@ leo_bpark_2_2 = ExpDef(
     samples_per_file=12800000,
     rx_channels=["32m"],
     tx_channel="32m",
+    fir_filter="b414d15_gaus",  # TODO: Apply correct filter
 )
 
 
@@ -91,6 +95,7 @@ leo_bpark_2_3v = ExpDef(
     samples_per_file=12800000,
     rx_channels=["vhf"],
     tx_channel="vhf",
+    fir_filter="b414d15_gaus",  # TODO: Apply correct filter
 )
 
 leo_bpark_2_4u = ExpDef(
@@ -109,6 +114,7 @@ leo_bpark_2_4u = ExpDef(
     samples_per_file=12800000,
     rx_channels=["uhf"],
     tx_channel="uhf",
+    fir_filter="b414d15_gaus",  # TODO: Apply correct filter
 )
 
 
@@ -128,4 +134,5 @@ leo_bpark_2_5u = ExpDef(
     samples_per_file=12800000,
     rx_channels=["uhf"],
     tx_channel="uhf",
+    fir_filter="b414d15_gaus",  # TODO: Apply correct filter
 )

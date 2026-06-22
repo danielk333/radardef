@@ -17,4 +17,5 @@ leo_mpark_2_1u = ExpDef(
     samples_per_file=12800000,
     rx_channels=["uhf"],
     tx_channel="uhf",
+    fir_filter="b414d15_gaus",  # TODO: Apply correct filter
 )

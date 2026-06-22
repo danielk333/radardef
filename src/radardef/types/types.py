@@ -2,7 +2,7 @@
 
 from copy import deepcopy
 from dataclasses import dataclass, field, fields
-from typing import NamedTuple, Optional, TypeVar
+from typing import Any, NamedTuple, Optional, TypeVar
 
 import numpy as np
 import numpy.typing as npt
@@ -47,6 +47,7 @@ class ExpDef:
     samples_per_file: int
     code: npt.NDArray[np.float64]
     rx_channels: list[str] | list[int]
+    fir_filter: str
     tx_channel: Optional[str | int] = None
     t_cal_on_usec: Optional[float] = None
     t_cal_off_usec: Optional[float] = None
@@ -59,7 +60,7 @@ class ExpDef:
         object.__setattr__(self, "wavelength", scipy.constants.c / (self.radar_frequency * 1e6))
         object.__setattr__(self, "ipp_samps", int(self.t_ipp_usec / self.t_samp_usec))
 
-    def copy(self: P, **modifications) -> P:
+    def copy(self: P, **modifications: dict[str, Any] | None) -> P:
         kwargs = {key.name: deepcopy(getattr(self, key.name)) for key in fields(self) if key.init}
         kwargs.update(modifications)
         return self.__class__(**kwargs)

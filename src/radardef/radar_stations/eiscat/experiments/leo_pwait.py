@@ -17,6 +17,7 @@ leo_pwait_2_3r = ExpDef(
     samples_per_file=12800000,
     rx_channels=["sod"],
     tx_channel="sod",
+    fir_filter="b414d15_gaus",  # TODO: Apply correct filter
 )
 
 leo_pwait_2_3u = ExpDef(
@@ -35,6 +36,7 @@ leo_pwait_2_3u = ExpDef(
     samples_per_file=12800000,
     rx_channels=["uhf"],
     tx_channel="uhf",
+    fir_filter="b414d15_gaus",  # TODO: Apply correct filter
 )
 
 
@@ -54,6 +56,7 @@ leo_pwait_2_3v = ExpDef(
     samples_per_file=12800000,
     rx_channels=["vhf"],
     tx_channel="vhf",
+    fir_filter="b414d15_gaus",  # TODO: Apply correct filter
 )
 
 
@@ -73,6 +76,7 @@ leo_pwait_2_4u = ExpDef(
     samples_per_file=12800000,
     rx_channels=["uhf"],
     tx_channel="uhf",
+    fir_filter="b414d15_gaus",  # TODO: Apply correct filter
 )
 
 leo_pwait_2_5u = ExpDef(
@@ -91,4 +95,5 @@ leo_pwait_2_5u = ExpDef(
     samples_per_file=12800000,
     rx_channels=["uhf"],
     tx_channel="uhf",
+    fir_filter="b414d15_gaus",  # TODO: Apply correct filter
 )

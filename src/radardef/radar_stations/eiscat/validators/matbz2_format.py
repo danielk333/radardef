@@ -25,4 +25,4 @@ class MatBz2(Validator):
 
     def _is_matbz2_file(self, path: Path) -> bool:
         """MatBz2 name format"""
-        return path.name.endswith(".mat.bz2")
+        return path.name.endswith(".mat.bz2") or path.name.endswith(".mat")

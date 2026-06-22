@@ -17,6 +17,7 @@ mu_exp = ExpDef(
         dtype=np.float64,
     ),
     rx_channels=[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25],
+    fir_filter="mu2004",
     samples_per_file=512 * 520 * 12,
 )
 
@@ -35,5 +36,6 @@ mu_exp_large = ExpDef(
         dtype=np.float64,
     ),
     rx_channels=[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25],
+    fir_filter="mu2004",
     samples_per_file=512 * 520 * 14,
 )
