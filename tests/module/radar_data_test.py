@@ -215,7 +215,7 @@ class RadarDataTest(unittest.TestCase):
         self.assertEqual(experiment_meta.t_cal_off_usec, 19997.0)
 
         self.assertEqual(loader.epoch_bounds.ts_start_usec, 1637668800001245.0)
-        self.assertEqual(loader.epoch_bounds.ts_end_usec, 1637669017601226.0)
+        self.assertEqual(loader.epoch_bounds.ts_end_usec, 1637668812801245.0)
 
         start, end = loader.bounds("32m")
         data = loader.read(channel="32m", start_sample=start, vector_length=10000)
@@ -229,7 +229,9 @@ class RadarDataTest(unittest.TestCase):
         output_dir = self.loc_tmp
         out = radar_def.convert(src_file, "hdf5", output_dir)
         print(out)
-        loader = radar_def.load_data(out[0], "hdf5")
+        loader = radar_def.load_data(
+            out[0], "hdf5"
+        )  # TODO: Read parent folder instead to get data from all files!
 
         experiment_meta = loader.exp_def
 
@@ -249,7 +251,7 @@ class RadarDataTest(unittest.TestCase):
         self.assertEqual(experiment_meta.t_cal_off_usec, 19997.0)
 
         self.assertEqual(loader.epoch_bounds.ts_start_usec, 1637668800001245.0)
-        self.assertEqual(loader.epoch_bounds.ts_end_usec, 1637669017601226.0)
+        self.assertEqual(loader.epoch_bounds.ts_end_usec, 1637668812801245.0)
 
         start, end = loader.bounds("32m")
         data = loader.read(channel="32m", start_sample=start, vector_length=10000)

@@ -17,11 +17,7 @@ class MatBz2(Validator):
 
         path = Path(src).resolve()
 
-        if path.is_file():
-            return self._is_matbz2_file(path)
-        else:
-            files = [f for f in path.iterdir() if self._is_matbz2_file(f)]
-            return len(files) > 0
+        return self._is_matbz2_file(path)
 
     def _is_matbz2_file(self, path: Path) -> bool:
         """MatBz2 name format"""
