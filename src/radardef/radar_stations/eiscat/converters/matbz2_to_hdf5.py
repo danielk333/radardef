@@ -122,7 +122,9 @@ def convert_matbz2_to_hdf5(
         + ".hdf5"
     )
 
-    file_path = dst / measurement_date / "converted_data" / name
+    file_path = (
+        dst / measurement_date / (measurement_time[0:2].replace(":", "") + "-00-00") / "converted_data" / name
+    )
 
     if not file_path.parent.is_dir():
         file_path.parent.mkdir(parents=True)
