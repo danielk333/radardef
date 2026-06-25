@@ -89,7 +89,8 @@ class H5Loader(DataLoader):
             elif n_ipps_start == (14 * 512):
                 return mu_exp_large
             else:
-                raise Exception("No experiment definition supporting the samples per file")
+                self.__logger.info("Samples per file amount is unknown, will create a new experiment")
+                return mu_exp.copy(samples_per_file=int(n_ipps_start * mu_exp.ipp_samps))
         else:
             n_ipps = h5py.File(files[0], "r")["data"].shape[1]
             if n_ipps == (12 * 512):
@@ -100,7 +101,8 @@ class H5Loader(DataLoader):
                 # A small file works with any exp defintion
                 return mu_exp
             else:
-                raise Exception("No experiment definition supporting the samples per file")
+                self.__logger.info("Samples per file amount is unknown, will create a new experiment")
+                return mu_exp.copy(samples_per_file=int(n_ipps * mu_exp.ipp_samps))
 
     def bounds(self, channel: str | int) -> tuple[int, int]:
         """Sample bounds of the specific channel

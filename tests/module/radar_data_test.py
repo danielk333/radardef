@@ -76,7 +76,7 @@ class RadarDataTest(unittest.TestCase):
         for dir in out:
             # Assert output dir is a subdir of dir
             assert str(output_dir) in str(dir)
-            assert dir.is_file()
+            assert dir.is_dir()
 
     def test_mu_h5_convert_multiple_files(self):
 
@@ -194,9 +194,8 @@ class RadarDataTest(unittest.TestCase):
         src_file = self.loc_test_data / "eiscat/leo_bpark_2.2_SW@32m_small"
         output_dir = self.loc_tmp
         out = radar_def.convert(src_file, "drf", output_dir)
-
+        out.sort()
         loader = radar_def.load_data(out[0], "drf")
-
         experiment_meta = loader.exp_def
 
         self.assertEqual(experiment_meta.name, "leo_bpark_2.2")
@@ -228,10 +227,8 @@ class RadarDataTest(unittest.TestCase):
         src_file = self.loc_test_data / "eiscat/leo_bpark_2.2_SW@32m_small"
         output_dir = self.loc_tmp
         out = radar_def.convert(src_file, "hdf5", output_dir)
-        print(out)
-        loader = radar_def.load_data(
-            out[0], "hdf5"
-        )  # TODO: Read parent folder instead to get data from all files!
+
+        loader = radar_def.load_data(out[0], "hdf5")
 
         experiment_meta = loader.exp_def
 
@@ -251,7 +248,7 @@ class RadarDataTest(unittest.TestCase):
         self.assertEqual(experiment_meta.t_cal_off_usec, 19997.0)
 
         self.assertEqual(loader.epoch_bounds.ts_start_usec, 1637668800001245.0)
-        self.assertEqual(loader.epoch_bounds.ts_end_usec, 1637668812801245.0)
+        self.assertEqual(loader.epoch_bounds.ts_end_usec, 1637669017601226.0)
 
         start, end = loader.bounds("32m")
         data = loader.read(channel="32m", start_sample=start, vector_length=10000)

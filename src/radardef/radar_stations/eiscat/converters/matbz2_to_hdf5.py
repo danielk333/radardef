@@ -196,7 +196,7 @@ def convert_matbz2_to_hdf5(
             # increment sample_write
             sample_write = sample_file_start + meta["exp"]["samples_per_file"]
 
-    return file_path
+    return file_path.parent
 
 
 def AntennaID(id: str) -> int:

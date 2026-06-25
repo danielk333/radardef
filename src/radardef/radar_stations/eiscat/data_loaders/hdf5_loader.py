@@ -1,7 +1,8 @@
+import functools
 import logging
 import re
 from pathlib import Path
-from typing import Optional
+from typing import List, Optional
 
 import h5py
 import numpy as np
@@ -78,7 +79,7 @@ class HDF5Loader(DataLoader):
     @property
     def epoch_bounds(self) -> BoundParams:
         """Data epoch bounds in microseconds"""
-        return self.__epoch_bounds
+        return self._epoch_bounds
 
     @property
     def channels(self) -> list[int] | list[str]:
@@ -91,20 +92,22 @@ class HDF5Loader(DataLoader):
         exp_def: Optional[ExpDef] = None,
         cache: bool = False,
     ) -> None:
+
+        self._path = Path(path)
+
+        if self.path.is_dir():
+            self.files = self._get_all_files_from_dir(self.path)
+        else:
+            self.files = [self.path]
+
+        if not exp_def:
+            exp_def = self.get_experiment(self.files)
+
         super().__init__(path, exp_def, cache)
-        if not self._exp_def:
-            file = self._open_hdf5_file(self.path)
-            name = file[self.PORTALDBREFERENCE][self.EXPERIMENTNAME][()][0].decode()
-            file.close
 
-            expname, expvers, owner = self._expinfo_split(name)
-            self._exp_def = get_experiment(group=expname, version=expvers)
-
-        self.__dumps, self.__samples_per_dump = self._get_data_size(self.path)
-        self.__epoch_bounds = self._extract_bounds(self.path)
-        self.__pointing = self._extract_pointing(self.path)
-        if cache:
-            self.__logger.info("Cache is requested but is not yet supported by this data loader")
+        self._dumps, self._dumps_per_file, self._samples_per_dump = self._get_data_size(self.files)
+        self._epoch_bounds = self._extract_bounds(self.files)
+        self._pointing = self._extract_pointing(self.files)
 
     def bounds(self, channel: str | int) -> tuple[int, int]:
         """Sample bounds of the specific channel
@@ -120,7 +123,7 @@ class HDF5Loader(DataLoader):
             channel = str(channel)
 
         if self._is_channel_present(channel):
-            return (0, self.__dumps * self.__samples_per_dump)
+            return (0, self._dumps * self._samples_per_dump)
         else:
             raise Exception(f"channel {channel} is missing in {dir}")
 
@@ -164,18 +167,65 @@ class HDF5Loader(DataLoader):
         if start_sample is None:
             start_sample = 0
         if vector_length is None:
-            vector_length = self.__samples_per_dump
+            vector_length = self._samples_per_dump
 
-        dump_index = start_sample // self.__samples_per_dump
-        sample_index = start_sample % self.__samples_per_dump
-        windows = -((sample_index + vector_length) // -self.__samples_per_dump)
+        # Index of data we are interested in
+        dump_index = start_sample // self._samples_per_dump
+        sample_index = start_sample % self._samples_per_dump
 
-        file = self._open_hdf5_file(self.path)
+        # Dump index relative to the affected files
+        dump_windows = -((sample_index + vector_length) // -self._samples_per_dump)
+        file_index = dump_index // self._dumps_per_file
+        file_dump_index = dump_index % self._dumps_per_file
+
+        # How many files does data need to be retrived from
+        n_files = -(dump_windows // -self._dumps_per_file)
+        if n_files == 1 and dump_windows + dump_index > self._dumps_per_file:
+            n_files += 1
+
+        if n_files == 1:
+            if (
+                self.cache_state and self._dumps_per_file < 20
+            ):  # Files of this size cannot be cached due to limited RAM.
+                all_dumps = self.get_data(self.files[file_index])
+                dumps = all_dumps[file_dump_index : file_dump_index + dump_windows]
+            else:
+                dumps = self.get_data(
+                    self.files[file_index],
+                    start_dump=file_dump_index,
+                    end_dump=file_dump_index + dump_windows,
+                )
+        else:
+            files = self.files[file_index : file_index + n_files]
+            dumps = np.empty((0,), dtype=np.complex128)
+            if self.cache_state and self._dumps_per_file < 20:
+                for i, file in enumerate(files):
+                    dump_block = self.get_data(self.files[file_index])
+                    if i == 0:
+                        dumps = dump_block
+                    else:
+                        dumps = np.concatenate((dumps, dump_block), axis=-1)
+                dumps = dumps[file_dump_index : file_dump_index + dump_windows]
+            else:
+                for i, file in enumerate(files):
+                    if i == 0:
+                        dump_block = self.get_data(self.files[file_index], start_dump=file_dump_index)
+                    elif i == len(files) - 1:
+                        first_block_n_dumps = self._dumps_per_file - file_dump_index
+                        dump_block = self.get_data(
+                            self.files[file_index],
+                            end_dump=dump_windows - (first_block_n_dumps + i * self._dumps_per_file),
+                        )
+                    else:
+                        dump_block = self.get_data(self.files[file_index])
+
+                    if i == 0:
+                        dumps = dump_block
+                    else:
+                        dumps = np.concatenate((dumps, dump_block), axis=-1)
 
         # Concatenate the dump windows
-        raw_data = np.concatenate(file[self.DATA][self.DATA_LEVEL][dump_index : dump_index + windows], axis=1)
-
-        file.close()
+        raw_data = np.concatenate(dumps, axis=1)  # TODO: Quite a bottleneck, find a faster alternative
 
         # extract samples
         data = np.empty(vector_length, dtype=complex)
@@ -184,59 +234,95 @@ class HDF5Loader(DataLoader):
 
         return data
 
-    # TODO: change to carthesian coordinates
+    def _get_data(
+        self, path: Path, start_dump: Optional[int] = None, end_dump: Optional[int] = None
+    ) -> npt.NDArray:
+        file = self._open_hdf5_file(path)
 
+        if start_dump is None:
+            start_dump = 0
+        if end_dump is None:
+            end_dump = file[self.DATA][self.DATA_LEVEL].shape[0]
+
+        data = file[self.DATA][self.DATA_LEVEL][start_dump:end_dump]
+        file.close()
+
+        return data
+
+    # TODO: change to carthesian coordinates
     def pointing(self, sample: int) -> Pointing:
         """Pointing data, data describing the radar pointing direction in spherical coordinates"""
 
-        block_id = sample // self.__samples_per_dump
-        return Pointing(azimuth=self.__pointing[block_id, 0], elevation=self.__pointing[block_id, 1])
+        block_id = sample // self._samples_per_dump
+        return Pointing(azimuth=self._pointing[block_id, 0], elevation=self._pointing[block_id, 1])
 
-    def _extract_pointing(self, path: Path) -> npt.NDArray:
+    def _extract_pointing(self, path: Path | list[Path]) -> npt.NDArray:
         """Extract pointing data from the parameter block"""
 
-        file = self._open_hdf5_file(path)
-        data = np.zeros((file[self.DATA][self.PARBLOCK][self.PARBLOCK].shape[0], 2))
-        for i in range(data.shape[0]):
-            data[i, 0] = file[self.DATA][self.PARBLOCK][self.PARBLOCK][i][self.PARBLOCK_AZIMUTH]
-            data[i, 1] = file[self.DATA][self.PARBLOCK][self.PARBLOCK][i][self.PARBLOCK_ELEVATION]
-        file.close()
+        if isinstance(path, list):
+            data = np.zeros((self._dumps, 2))
+            for i, sub_path in enumerate(path):
+                file = self._open_hdf5_file(sub_path)
+                file_dumps = file[self.DATA][self.PARBLOCK][self.PARBLOCK].shape[0]
+                for j in range(file_dumps):
+                    data[(i * self._dumps_per_file) + j, 0] = file[self.DATA][self.PARBLOCK][self.PARBLOCK][
+                        j
+                    ][self.PARBLOCK_AZIMUTH]
+                    data[(i * self._dumps_per_file) + j, 1] = file[self.DATA][self.PARBLOCK][self.PARBLOCK][
+                        j
+                    ][self.PARBLOCK_ELEVATION]
+                file.close()
+        else:
+            file = self._open_hdf5_file(path)
+            data = np.zeros((self._dumps, 2))
+            for i in range(data.shape[0]):
+                data[i, 0] = file[self.DATA][self.PARBLOCK][self.PARBLOCK][i][self.PARBLOCK_AZIMUTH]
+                data[i, 1] = file[self.DATA][self.PARBLOCK][self.PARBLOCK][i][self.PARBLOCK_ELEVATION]
+            file.close()
         return data
 
-    def _extract_bounds(self, path: Path) -> BoundParams:
+    def _extract_bounds(self, path: Path | list[Path]) -> BoundParams:
         """
-        Extract meta data from HDF5 file and experiment config files
+        Extract epoch bounds HDF5 file
 
         """
-        file = self._open_hdf5_file(path)
-
-        if (
-            self.exp_def.radar_frequency
-            != file[self.DATA]["ParBlock"]["ParBlock"][0][self.PARBLOCK_FREQUENCY]
-        ):
-            self.__logger.debug(
-                f"Radar frequency in experiment does not match with frequency in measurement file.\
-                exp def: {self.exp_def.radar_frequency} \
-                measurement file: {file[self.DATA]['ParBlock']['ParBlock'][0][self.PARBLOCK_FREQUENCY]}"
-            )
-        if self.exp_def.rx_channels[0] != file[self.PORTALDBREFERENCE][self.DATASTREAM][0].decode():
-            raise ValueError("Rx channel does not match with channel in measurement file")
-
+        start_file = path[0] if isinstance(path, list) else path
+        file = self._open_hdf5_file(start_file)
         start_time_sec = (
             ts_from_str(file[self.DATA][self.ENDTIME][0].decode()) - file[self.DATA][self.INTEGRATIONTIME][0]
         )
-        end_time_sec = ts_from_str(file[self.DATA][self.ENDTIME][-1].decode())
-        bounds = BoundParams(ts_start_usec=int(start_time_sec * 1e6), ts_end_usec=int(end_time_sec * 1e6))
         file.close()
-        return bounds
 
-    def _get_data_size(self, path: Path) -> tuple[int, int]:
+        end_file = path[-1] if isinstance(path, list) else path
+        file = self._open_hdf5_file(end_file)
+        end_time_sec = ts_from_str(file[self.DATA][self.ENDTIME][-1].decode())
+        file.close()
+
+        return BoundParams(ts_start_usec=int(start_time_sec * 1e6), ts_end_usec=int(end_time_sec * 1e6))
+
+    def _get_data_size(self, path: Path | list[Path]) -> tuple[int, int, int]:
         """Extract amount of dumps and sample per dump from hdf5 file"""
-        file = self._open_hdf5_file(path)
 
-        dumps, _, sample_per_dump = file[self.DATA][self.DATA_LEVEL].shape
+        if isinstance(path, List):
+            dumps = 0
+            dumps_per_file = -1
+            sample_per_dump = -1
+            for sub_path in path:
+                file = self._open_hdf5_file(sub_path)
+                dumps += file[self.DATA][self.DATA_LEVEL].shape[0]
+                if dumps_per_file == -1:
+                    dumps_per_file = file[self.DATA][self.DATA_LEVEL].shape[0]
+                if sample_per_dump == -1:
+                    sample_per_dump = file[self.DATA][self.DATA_LEVEL].shape[2]
+                file.close()
+        else:
+            file = self._open_hdf5_file(path)
 
-        return dumps, sample_per_dump
+            dumps, _, sample_per_dump = file[self.DATA][self.DATA_LEVEL].shape
+            dumps_per_file = dumps
+            file.close()
+
+        return dumps, dumps_per_file, sample_per_dump
 
     def _open_hdf5_file(self, path: Path) -> h5py.File:
         """Open hdf5 file and return reader"""
@@ -280,8 +366,90 @@ class HDF5Loader(DataLoader):
         """is channel present in the data"""
         return chnl in self.exp_def.rx_channels
 
+    def _get_all_files_from_dir(self, path: Path) -> list[Path]:
+        """Get all files available in dir"""
+        paths: list[Path] = []
+        if not path.is_dir():
+            return paths
+
+        paths = [f for f in path.iterdir() if f.is_file() and self.validate(f)]
+        paths.sort()
+
+        if len(paths) == 0:
+            raise Exception(f"No valid hdf5 files at: {path}")
+        return paths
+
+    def get_experiment(self, files: list[Path]) -> ExpDef:
+
+        if len(files) >= 2:
+            file = self._open_hdf5_file(self.files[0])
+            name = file[self.PORTALDBREFERENCE][self.EXPERIMENTNAME][()][0].decode()
+            shape = file[self.DATA][self.DATA_LEVEL].shape
+            frequency = file[self.DATA]["ParBlock"]["ParBlock"][0][self.PARBLOCK_FREQUENCY]
+            rx_channel = file[self.PORTALDBREFERENCE][self.DATASTREAM][0].decode()
+            file.close()
+
+            file = self._open_hdf5_file(self.files[-2])
+            end_name = file[self.PORTALDBREFERENCE][self.EXPERIMENTNAME][()][0].decode()
+            end_shape = file[self.DATA][self.DATA_LEVEL].shape
+            end_frequency = file[self.DATA]["ParBlock"]["ParBlock"][0][self.PARBLOCK_FREQUENCY]
+            end_rx_channel = file[self.PORTALDBREFERENCE][self.DATASTREAM][0].decode()
+            file.close()
+
+            if name != end_name:
+                raise Exception(
+                    "Files in the directory has run on different experiments, analyse the file separately"
+                )
+            if shape != end_shape:
+                raise Exception("Files in this directory are of different shape, not possible to load")
+
+            # TODO: Compare last and first frequency and rx channel?
+
+        else:
+            file = self._open_hdf5_file(self.files[0])
+            name = file[self.PORTALDBREFERENCE][self.EXPERIMENTNAME][()][0].decode()
+            shape = file[self.DATA][self.DATA_LEVEL].shape
+            frequency = file[self.DATA]["ParBlock"]["ParBlock"][0][self.PARBLOCK_FREQUENCY]
+            rx_channel = file[self.PORTALDBREFERENCE][self.DATASTREAM][0].decode()
+            file.close
+
+        expname, expvers, owner = self._expinfo_split(name)
+        exp_def = get_experiment(group=expname, version=expvers)
+
+        if exp_def.samples_per_file != int(shape[0] * shape[2]):
+            self.__logger.info("Samples per file amount is unknown, will create a new experiment")
+            exp_def = exp_def.copy(samples_per_file=int(shape[0] * shape[2]))
+
+        if exp_def.radar_frequency != frequency:
+            self.__logger.debug(
+                f"Radar frequency in experiment does not match with frequency in measurement file.\
+                exp def: {exp_def.radar_frequency} measurement file: {frequency}"
+            )
+            # TODO: Update experiment with correct frequency
+
+        if exp_def.rx_channels[0] != rx_channel:
+            raise ValueError("Rx channel does not match with channel in measurement file")
+
+        return exp_def
+
     def _setup_cache(self) -> None:
+        """Setup cache"""
+
+        if self.cache_state:
+            self.get_data = functools.lru_cache(maxsize=2)(self._get_data)
+        else:
+            self.get_data = self._get_data  # type: ignore[assignment]
+
+    def __getstate__(self) -> dict:
         """
-        Set up caching configuration
+        Prepare object for e.g pickling by removing the decorated functions (not supported by pickle)
         """
-        pass
+        state = self.__dict__.copy()
+        if "get_data" in state:
+            del state["get_data"]
+        return state
+
+    def __setstate__(self, state: dict) -> None:
+        """Restore object after unpickling"""
+        self.__dict__.update(state)
+        self._setup_cache()

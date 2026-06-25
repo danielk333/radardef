@@ -84,6 +84,9 @@ class Converter:
             pbar.close()
         else:
             comm.barrier()
+
+        # Remove duplicates
+        output = list(set(output))
         return output
 
     @abstractmethod
