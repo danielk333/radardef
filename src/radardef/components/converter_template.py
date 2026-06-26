@@ -1,5 +1,6 @@
 """Template class for all converters to inherit from"""
 
+import itertools
 import logging
 from abc import abstractmethod
 from pathlib import Path
@@ -83,6 +84,17 @@ class Converter:
         if pbar:
             pbar.close()
         else:
+            comm.barrier()
+
+        if comm.size > 1:
+            all_outputs = comm.gather(output, root=0)
+
+            if comm.rank == 0:
+                output = list(itertools.chain.from_iterable(all_outputs))  # type: ignore[arg-type]
+            else:
+                output = None  # type: ignore[assignment]
+
+            output = comm.bcast(output, root=0)
             comm.barrier()
 
         # Remove duplicates
