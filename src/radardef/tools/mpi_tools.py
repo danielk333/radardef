@@ -101,7 +101,7 @@ def get_mpi() -> CommObject:
 class CommBar:
     """
     If tot = none it will just be a bouncing bar
-
+    TODO: Docs
     """
 
     def __init__(
@@ -123,6 +123,7 @@ class CommBar:
         self.parent_progress = parent_progress
         self.multi_process_bar = multi_process_bar and comm.size > 1
         self.buffer = 0
+        self._last_line_count = 0
 
         if self.comm.rank == self.prog_rank:
             if not parent_progress:
@@ -152,7 +153,6 @@ class CommBar:
                         auto_refresh=False,
                     )
                     self.update_rate = 0.05
-                self._last_line_count = 0
             else:
                 self.prog = parent_progress.prog
 
@@ -314,6 +314,16 @@ class CommBar:
             self.comm.isend([self.buffer, self.task_id], dest=self.prog_rank, tag=self.thread_id)
             self.buffer = 0
 
+    def clear_sub_tasks(self):
+        self.comm.barrier()
+        if self.comm.rank == self.prog_rank:
+            if not self.parent_progress:
+                for task in list(self.prog.tasks):
+                    if task.id != self.task_id:
+                        self.prog.remove_task(task.id)
+
+            self.print_bar(self.prog)
+
     def close(self) -> None:
         """
         Close bar
@@ -333,7 +343,7 @@ class CommBar:
         if self.comm.rank == self.prog_rank:
             # If it is a hovering bar that is closed, print its total if available, then mark green
             if self.tot is None:
-                completed = self.prog.tasks[self.task_id].completed  # type: ignore[index]
+                completed = self.prog._tasks.get(self.task_id).completed  # type: ignore[index]
                 if completed > 0:
                     self.prog.update(
                         self.task_id,  # type: ignore[arg-type]
@@ -363,6 +373,13 @@ class CommBar:
 
             # For the main bar, if marked with transient clear all rows once finsihed
             elif not self.parent_progress and self.transient:
+                # Remove all subtasks aswell if done and transient requested
+                for task in list(self.prog.tasks):
+                    if task.finished and task.id != self.task_id:
+                        self.prog.remove_task(task.id)
+
+                self.print_bar(self.prog)
+
                 lines_to_clear = self._last_line_count
                 if lines_to_clear > 0:
                     sys.stdout.write(f"\x1b[{lines_to_clear}A\r\x1b[J")
