@@ -118,7 +118,7 @@ class Converter:
     def _get_all_files(self, path: Path) -> list[Path]:
 
         if path.is_dir() and not self.validator.validate(path):
-            return [file for file in path.rglob(".") if self.validator.validate(file)]
+            return [file for file in path.rglob("*") if self.validator.validate(file)]
         elif self.validator.validate(path):
             return [path]
         return []
