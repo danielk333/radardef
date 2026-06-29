@@ -314,7 +314,7 @@ class CommBar:
             self.comm.isend([self.buffer, self.task_id], dest=self.prog_rank, tag=self.thread_id)
             self.buffer = 0
 
-    def clear_sub_tasks(self):
+    def clear_sub_tasks(self) -> None:
         self.comm.barrier()
         if self.comm.rank == self.prog_rank:
             if not self.parent_progress:
@@ -342,8 +342,8 @@ class CommBar:
 
         if self.comm.rank == self.prog_rank:
             # If it is a hovering bar that is closed, print its total if available, then mark green
-            if self.tot is None:
-                completed = self.prog._tasks.get(self.task_id).completed  # type: ignore[index]
+            if self.tot is None and self.prog:
+                completed = self.prog._tasks.get(self.task_id).completed  # type: ignore[union-attr, arg-type]
                 if completed > 0:
                     self.prog.update(
                         self.task_id,  # type: ignore[arg-type]
