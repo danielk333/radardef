@@ -241,7 +241,14 @@ def eiscat_load_file(
     idx_startfile = idx_origin + file_idx * samples_per_file
 
     # check that samples is correct
-    data = to_i2x16(mat["d_raw"][:, 0])
+    if mat["d_raw"].shape[0] != samples_per_file:
+        n_channels = mat["d_raw"].shape[0] // samples_per_file
+        data = np.ndarray((samples_per_file,), dtype=np.complex128)
+        for channel in range(n_channels):
+            data += mat["d_raw"][samples_per_file * channel : samples_per_file * (channel + 1), 0]
+        data = to_i2x16(data)
+    else:
+        data = to_i2x16(mat["d_raw"][:, 0])
     n_samples = len(data)
 
     errors = []
