@@ -214,7 +214,7 @@ class HDF5Loader(DataLoader):
                         first_block_n_dumps = self._dumps_per_file - file_dump_index
                         dump_block = self.get_data(
                             self.files[file_index],
-                            end_dump=dump_windows - (first_block_n_dumps + i * self._dumps_per_file),
+                            end_dump=dump_windows - (first_block_n_dumps + (i - 1) * self._dumps_per_file),
                         )
                     else:
                         dump_block = self.get_data(self.files[file_index])

@@ -183,6 +183,10 @@ def convert_matbz2_to_hdf5(
                 data_group["IntegrationTime"][i] = meta_first["exp"]["file_secs"]
                 data_group["L1"][i] = np.zeros((2, meta_first["exp"]["samples_per_file"]))
 
+            for error in errors:
+                if logger:
+                    logger.warning("error")
+
             # Parameter block
             par_block = np.zeros((67,), dtype="f4")
             par_block[PARBLOCK_ELEVATION] = pointing_data["elevation"]
