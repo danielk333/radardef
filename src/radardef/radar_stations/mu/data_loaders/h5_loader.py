@@ -435,7 +435,7 @@ class H5Loader(DataLoader):
         if self.cache_state:
             self.get_data = functools.lru_cache(maxsize=2)(self._get_data)
         else:
-            if hasattr(self.get_data, "cache_clear"):
+            if hasattr(self, "get_data") and hasattr(self.get_data, "cache_clear"):
                 self.get_data.cache_clear()
             self.get_data = self._get_data  # type: ignore[assignment]
 
