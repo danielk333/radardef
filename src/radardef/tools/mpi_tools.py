@@ -323,6 +323,7 @@ class CommBar:
                         self.prog.remove_task(task.id)
 
             self.print_bar(self.prog)
+        self.comm.barrier()
 
     def close(self) -> None:
         """
