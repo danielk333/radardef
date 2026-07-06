@@ -81,6 +81,8 @@ class Converter:
             if pbar:
                 pbar.update(1)
 
+        output.sort()
+
         if pbar:
             pbar.close()
         else:
@@ -95,6 +97,7 @@ class Converter:
                 output = None  # type: ignore[assignment]
 
             output = comm.bcast(output, root=0)
+            output.sort()
             comm.barrier()
 
         # Remove duplicates
