@@ -56,18 +56,43 @@ def convert_mui_to_h5(
     byte = file.read(1)
     file.seek(-1, 1)
 
-    header_first: dict[Any, Any] = {}
-    header_last = {}
+    # Get header data of file
+    header = header_first = _get_header_data(file)
+    header_last = None
+    observation_param_name = header_first["observation_param_name"]
+
+    # I replace ':' with a ., as windows cannot save files with ':' in their name.
+    start_time = np.datetime_as_string(header_first["record_start_time"]).replace(":", ".")
+    dst_dated = (
+        Path(str(dst)).joinpath(
+            start_time[0:10],  # YYYY-MM-DD
+            start_time[11:13] + "-00-00",  # HH-00-00
+            "converted_data",
+        )
+        if bool(dst)
+        else Path("")
+    )
+
+    """
+    Combined it will be something like "dst/20XX/YY/ZZ"
+    Using str(dst) to safeguard against dst being None
+    """
+    output_file_name = dst_dated.joinpath(start_time + ".h5")
+
+    # If already existing, skip this file
+    if output_file_name.is_file():
+        file.close()
+        return dst_dated
+
+    # Extract data from a blocks
 
     data_blocks = None
     channel_list = []
-
+    first_block_read = False
     while byte != b"":
-        header = _get_header_data(file)
-
-        if not header_first:
-            header_first = header
-        header_last = header
+        # DO not read on first loop!
+        if first_block_read:
+            header = header_last = _get_header_data(file)
 
         block_amount = header["mu_head_1_to_24"][2]
 
@@ -120,27 +145,10 @@ def convert_mui_to_h5(
 
         byte = file.read(1)
         file.seek(-1, 1)
+        first_block_read = True
 
     logger.debug("Reached EOF, exiting loop and closing file")
     file.close()
-
-    observation_param_name = header_first["observation_param_name"]
-    # I replace ':' with a ., as windows cannot save files with ':' in their name.
-    start_time = np.datetime_as_string(header_first["record_start_time"]).replace(":", ".")
-    dst_dated = (
-        Path(str(dst)).joinpath(
-            start_time[0:10],  # YYYY-MM-DD
-            start_time[11:13] + "-00-00",  # HH-00-00
-            "converted_data",
-        )
-        if bool(dst)
-        else Path("")
-    )
-    """
-    Combined it will be something like "dst/20XX/YY/ZZ"
-    Using str(dst) to safeguard against dst being None
-    """
-    output_file_name = dst_dated.joinpath(start_time + ".h5")
 
     """
     Creates the directories if not yet created.

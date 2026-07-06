@@ -129,6 +129,12 @@ def convert_matbz2_to_hdf5(
     if not file_path.parent.is_dir():
         file_path.parent.mkdir(parents=True)
 
+    if file_path.is_file():
+        if logger:
+            logger.info(f"File already exists: {file_path}")
+
+        return file_path.parent
+
     with h5py.File(str(file_path), "w") as hdf5_file:
         n_data_points = len(files)
 
