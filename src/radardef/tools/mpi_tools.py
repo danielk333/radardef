@@ -331,7 +331,7 @@ class CommBar:
         """
 
         self.comm.isend([self.buffer, self.task_id], dest=self.prog_rank, tag=self.thread_id)
-
+        time.sleep(0.2)
         # If multiple processes dependent on this process, wait for them
         if self.multi_process_bar:
             try:
@@ -372,7 +372,7 @@ class CommBar:
                 if self.parent_progress:
                     self.parent_progress.print_bar(self.prog)
 
-            # For the main bar, if marked with transient clear all rows once finsihed
+            # For the main bar, if marked with transient clear all rows once finished
             elif not self.parent_progress and self.transient:
                 # Remove all subtasks aswell if done and transient requested
                 for task in list(self.prog.tasks):
@@ -386,6 +386,12 @@ class CommBar:
                     sys.stdout.write(f"\x1b[{lines_to_clear}A\r\x1b[J")
                     sys.stdout.flush()
                     self._last_line_count = 0
+
+        if self.multi_process_bar:
+            try:
+                self.comm.barrier()
+            except Exception:
+                pass
 
 
 class RateColumn(ProgressColumn):

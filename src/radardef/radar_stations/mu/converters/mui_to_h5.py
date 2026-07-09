@@ -150,6 +150,9 @@ def convert_mui_to_h5(
     logger.debug("Reached EOF, exiting loop and closing file")
     file.close()
 
+    if not header_last:
+        header_last = header_first
+
     """
     Creates the directories if not yet created.
     """

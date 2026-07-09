@@ -1,10 +1,6 @@
-[build-system]
-requires = ["setuptools"]
-build-backend = "setuptools.build_meta"
-
 [project]
 name = "radardef"
-version = "0.5.0"
+version = "0.5.1"
 description = "Radar station specifications and data utilities"
 readme = { file = "README.md", content-type = "text/markdown" }
 authors = [
@@ -18,22 +14,22 @@ maintainers = [
 license = { file = "LICENSE" }
 classifiers = [
   "Intended Audience :: Science/Research",
+  "License :: OSI Approved :: MIT License",
+  "Operating System :: OS Independent",
   "Programming Language :: Python :: 3",
   "Topic :: Scientific/Engineering :: Physics",
-  "Operating System :: OS Independent",
-  "License :: OSI Approved :: MIT License",
 ]
 requires-python = ">=3.10"
 dependencies = [
-  "pyant >= 1.1.5",
-  "spacecoords >= 0.1.2",
-  "numpy >= 1.19.5",
-  "scipy >= 1.4.1",
-  "h5py >= 3.4.0",
-  "rich >= 15.0.0",
-  "requests >= 2.28.2",
-  "lxml",
   "astropy>=6",
+  "h5py >= 3.4.0",
+  "lxml",
+  "numpy >= 1.19.5",
+  "pyant >= 1.1.5",
+  "requests >= 2.28.2",
+  "rich >= 15.0.0",
+  "scipy >= 1.4.1",
+  "spacecoords >= 0.1.2",
   "strenum ; python_version<'3.11'",
   "typing_extensions ; python_version<'3.11'"
 ]
@@ -56,9 +52,6 @@ develop = [
   "ruff"
 ]
 digital_rf = ["digital_rf >= 2.6.6"]
-type_checker = ["mypy >= 1.18.2", "xenon"]
-profiling = ["yappi >= 1.4.0"]
-tests = ["pytest", "pytest-cov"]
 documentation = [
   "docstr-coverage",
   "mkdocs-material",
@@ -70,33 +63,14 @@ documentation = [
   "matplotlib",
 ]
 mpi = ["mpi4py"]
+profiling = ["yappi >= 1.4.0"]
 skymaps = ["pygdsm", "astropy-healpix"]
+tests = ["pytest", "pytest-cov"]
+type_checker = ["mypy >= 1.18.2", "xenon"]
 
-[tool.setuptools]
-include-package-data = true
-license-files = ["LICENSE"]
-
-[tool.setuptools.packages.find]
-where = ["src"]
-
-[tool.mypy]
-disallow_untyped_defs = true
-follow_untyped_imports = true
-warn_unused_ignores = true
-packages = ["radardef"]
-
-[tool.ruff]
-line-length = 110
-
-[tool.ruff.lint.per-file-ignores]
-"__init__.py" = ["F401"]
-
-[tool.ruff.lint]
-ignore = ["E203","D203","E251","E501","E226"]
-
-[tool.pytest]
-addopts = ["-v"]
-testpaths = ["tests"]
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
 
 [tool.coverage]
 parallel = true
@@ -118,3 +92,29 @@ exclude_also = [
   # Don't complain about abstract methods, they aren't run:
   "@(abc\\.)?abstractmethod",
 ]
+
+[tool.mypy]
+disallow_untyped_defs = true
+follow_untyped_imports = true
+warn_unused_ignores = true
+packages = ["radardef"]
+
+[tool.pytest]
+addopts = ["-v"]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 110
+
+[tool.ruff.lint]
+ignore = ["E203", "D203", "E251", "E501", "E226"]
+
+[tool.ruff.lint.per-file-ignores]
+"__init__.py" = ["F401"]
+
+[tool.setuptools]
+include-package-data = true
+license-files = ["LICENSE"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
