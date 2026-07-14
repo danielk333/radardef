@@ -331,7 +331,7 @@ class CommBar:
         """
 
         self.comm.isend([self.buffer, self.task_id], dest=self.prog_rank, tag=self.thread_id)
-        time.sleep(0.2)
+        time.sleep(0.4)
         # If multiple processes dependent on this process, wait for them
         if self.multi_process_bar:
             try:
