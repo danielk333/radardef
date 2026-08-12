@@ -181,7 +181,7 @@ class RadarStation:
         data_loaders: list[type[DataLoader]] = [],
     ) -> None:
 
-        self.__station_id = station_id
+        self.__station_id = str(station_id)
         self.__transmitter = transmitter
         self.__receiver = receiver
         self.__lat = lat
