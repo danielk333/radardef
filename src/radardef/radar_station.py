@@ -4,10 +4,12 @@ import logging
 from pathlib import Path
 from typing import Optional
 
+import numpy as np
+import numpy.typing as npt
 from numpy.typing import NDArray
 from pyant import Beam
 from pyant.types import Parameters
-from spacecoords import celestial, frames, spherical
+from spacecoords import celestial, frames, linalg, spherical
 
 from radardef.collections import ConverterCollection, DataLoaderCollection
 from radardef.components.converter_template import Converter
@@ -103,7 +105,7 @@ class RadarStation:
         return self.__ecef_alt
 
     @property
-    def min_elevation(self) -> float | None:
+    def min_elevation(self) -> float:
         """The minimum elevation the radar can measure at."""
         return self.__min_elevation
 
@@ -161,6 +163,23 @@ class RadarStation:
 
         return rel_
 
+    def field_of_view(self, states: npt.NDArray) -> npt.NDArray[np.bool_]:
+        """Determines the field of view of the station.
+        Should be vectorized over second dimension of states.
+        Needs to return a numpy boolean array with `True` when the state is inside the FOV.
+
+        Used to determine when a "pass" is occurring based on the input ECEF states and times.
+        The default implementation is a minimum elevation check.
+        """
+        zenith = np.array([0, 0, 1], dtype=np.float64)
+
+        enu = self.enu(states[:3, :])
+
+        zenith_ang = linalg.vector_angle(zenith, enu, degrees=True)
+        check = np.asarray(zenith_ang < 90.0 - self.min_elevation)
+
+        return check
+
     def __init__(
         self,
         station_id: str,
@@ -171,7 +190,7 @@ class RadarStation:
         alt: float,
         beam: Beam,
         beam_parameters: Parameters,
-        min_elevation: Optional[float] = None,
+        min_elevation: float,
         noise_temperature: Optional[float] = None,
         power: Optional[float] = None,
         power_per_element: Optional[float] = None,

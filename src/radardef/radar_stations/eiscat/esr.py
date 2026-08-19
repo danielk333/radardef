@@ -30,12 +30,12 @@ class ESR(RadarStation):
             beam, params = esr_32m_cassegrain_beam()
             station_id = StationID.ESR_32M
             lon = 16.0758715
-            min_elevation = 15
+            min_elevation = 15.0
         elif dish_diameter == DishDiameter.ESR_42M:
             beam, params = esr_42m_cassegrain_beam()
             station_id = StationID.ESR_42M
             lon = 16.081483
-            min_elevation = None
+            min_elevation = 81.6  # Fixed to this elevation!
 
         super().__init__(
             station_id,

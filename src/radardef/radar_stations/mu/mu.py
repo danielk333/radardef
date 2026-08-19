@@ -39,7 +39,7 @@ class Mu(RadarStation):
             alt=372.0,
             beam=beam,
             beam_parameters=params,
-            min_elevation=30,
+            min_elevation=60,
             power=1e6,
             power_per_element=2105.2631578947367,
             frequency=46.5e6,

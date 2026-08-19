@@ -23,6 +23,7 @@ class EiscatVHF(RadarStation):
             alt=85.0,
             beam=beam,
             beam_parameters=params,
+            min_elevation=30,
             noise_temperature=100,
             power=1.6e6,
             frequency=224e6,

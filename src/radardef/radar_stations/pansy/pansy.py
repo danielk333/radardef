@@ -38,6 +38,7 @@ class Pansy(RadarStation):
             alt=0.0,
             beam=beam,
             beam_parameters=params,
+            min_elevation=60,
             power=0.5e6,
             power_per_element=500.0,
             frequency=47e6,
