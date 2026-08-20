@@ -38,6 +38,7 @@ class CommObject(Protocol):
     def isend(self, obj: Any, dest: int, tag: int = 0) -> Any: ...
     def iprobe(self, source: int = 0, tag: int = 0, status: Any = None) -> bool: ...
     def allreduce(self, sendobj: Any, op: Callable[[Any, Any], Any] = lambda x, y: x + y) -> Any: ...
+    def allgather(self, sendobj: Any) -> list[Any]: ...
 
 
 class CommMock(CommObject):
@@ -72,6 +73,9 @@ class CommMock(CommObject):
 
     def allreduce(self, sendobj: Any, op: Callable[[Any, Any], Any] = lambda x, y: x + y) -> Any:
         return sendobj
+
+    def allgather(self, sendobj: Any) -> list[Any]:
+        return [sendobj]
 
 
 _COMM: CommObject = CommMock()
