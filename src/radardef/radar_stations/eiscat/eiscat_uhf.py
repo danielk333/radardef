@@ -88,7 +88,7 @@ class EiscatUHF(RadarStation):
                     beam_parameters=params,
                     min_elevation=30,
                     noise_temperature=100,
-                    power=1.6e6,
+                    power=2.0e6,
                     frequency=930.0e6,
                     converters=[MatBz2ToHDF5(), MatBz2ToDrf()],
                     validator=MatBz2(),
