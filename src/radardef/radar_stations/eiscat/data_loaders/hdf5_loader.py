@@ -48,6 +48,9 @@ class HDF5Loader(DataLoader):
           └─ResourceID
     ```
 
+    The data layout is documented trough the link in `Documentation`, e.g. the 2024 release:
+    https://doi.org/10.5281/zenodo.15490005
+
     Args:
         path: Path to file containing the data.
         exp_def: Experiment definition to be able to decode the data.
@@ -69,6 +72,7 @@ class HDF5Loader(DataLoader):
     PARBLOCK_ELEVATION = 8
     PARBLOCK_AZIMUTH = 9
     PARBLOCK_FREQUENCY = 54  # Not stated in docs
+    PARBLOCK_CALIBRATION_TEMPERATURE = 20  # post-2000 format
     ENDTIME = "EndTime"
     INTEGRATIONTIME = "IntegrationTime"
     # PortalDBReference section
